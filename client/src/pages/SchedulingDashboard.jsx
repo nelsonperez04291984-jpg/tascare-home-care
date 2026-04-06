@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Calendar as CalendarIcon, User, Plus, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle2, Loader2, WifiOff, X, Clock, MapPin, TrendingUp
+  AlertCircle, CheckCircle2, Loader2, WifiOff, X, Clock, MapPin, TrendingUp, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
