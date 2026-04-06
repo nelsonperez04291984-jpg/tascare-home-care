@@ -203,8 +203,11 @@ app.get('/api/migrate', async (req, res) => {
       CROSS JOIN generate_series(1, 5) AS d(day_of_week)
       WHERE tenant_id = '00000000-0000-0000-0000-000000000000'
       ON CONFLICT (worker_id, day_of_week) DO NOTHING;
+
+      -- REPAIR STEP: Ensure all workers are marked as active if the column was added later
+      UPDATE support_workers SET is_active = true WHERE is_active IS NULL;
     `);
-    res.json({ success: true, message: '✅ All tables created and seeded with availability engine data!' });
+    res.json({ success: true, message: '✅ All tables created, seeded, and worker status repaired!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
