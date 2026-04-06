@@ -61,6 +61,7 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
     scheduled_time: '09:00',
     service_type:   'Personal Care',
     client_name:    '',
+    client_suburb:  'Hobart',
     duration_hours: '1',
     notes:          '',
     repeat:         'None',       // 'None', 'Daily', 'Weekly'
@@ -85,7 +86,7 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
     const checkAvailability = async () => {
       setCheckingAvailability(true);
       try {
-        const res = await axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}&target_date=${form.scheduled_date}&target_time=${form.scheduled_time}&duration_hours=${form.duration_hours}`);
+        const res = await axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}&target_date=${form.scheduled_date}&target_time=${form.scheduled_time}&duration_hours=${form.duration_hours}&target_suburb=${form.client_suburb}`);
         setAvailableWorkers(res.data);
         
         // If the currently selected worker becomes unavailable, auto-deselect them to prevent errors
@@ -102,7 +103,7 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
       }
     };
     checkAvailability();
-  }, [form.scheduled_date, form.scheduled_time, form.duration_hours]);
+  }, [form.scheduled_date, form.scheduled_time, form.duration_hours, form.client_suburb]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -197,6 +198,23 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
                   required
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  Client Suburb (Target)
+                </label>
+                <select
+                  value={form.client_suburb}
+                  onChange={e => set('client_suburb', e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-clinical-400 outline-none bg-white transition-all cursor-pointer"
+                >
+                  {['Hobart', 'Kingston', 'Glenorchy', 'Bellerive', 'Sandy Bay', 'Taroona', 'Moonah', 'Claremont', 'Rokeby', 'Howrah'].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
                   Service Type
@@ -295,18 +313,24 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
                     <span className="text-xs font-semibold">Running availability engine…</span>
                   </div>
                 ) : availableWorkers.map((w, idx) => {
-                  const logistics = getWorkerLogistics(w.id, idx);
                   const isSelected = form.worker_id === w.id;
                   const isAvailable = w.is_available;
+                  const isBestMatch = idx === 0 && isAvailable; // Already sorted by score on backend
                   
                   return (
                     <div 
                       key={w.id} 
                       onClick={() => isAvailable && set('worker_id', w.id)}
-                      className={`transition-all border-2 rounded-2xl p-4 
+                      className={`transition-all border-2 rounded-2xl p-4 relative
                         ${!isAvailable ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-200 grayscale' : 'cursor-pointer hover:border-clinical-200 hover:bg-slate-50 border-slate-100'} 
                         ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100 opacity-100 grayscale-0' : ''}`}
                     >
+                      {isBestMatch && (
+                        <div className="absolute -top-2.5 -left-1 px-2 py-0.5 bg-emerald-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest shadow-sm z-10">
+                          Best Logistical Match
+                        </div>
+                      )}
+                      
                       <div className="flex items-start justify-between">
                         <div>
                           <p className={`font-bold ${!isAvailable ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{w.name}</p>
@@ -315,7 +339,9 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
                             {w.availability_reason || 'Unknown'}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
-                            <MapPin size={12} className={idx === 0 && isAvailable ? "text-rose-500" : "text-blue-500"}/> {logistics.distance} from Client
+                            <MapPin size={12} className={isBestMatch ? "text-rose-500" : "text-blue-500"}/> 
+                            <span className="font-bold">{w.distance_km}km</span> from {w.home_suburb || 'Base'}
+                            <span className="text-[10px] text-slate-400 italic"> (~{w.travel_time_min}m travel)</span>
                           </div>
                         </div>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-clinical-500 border-clinical-500 text-white' : 'border-slate-200 bg-white'}`}>

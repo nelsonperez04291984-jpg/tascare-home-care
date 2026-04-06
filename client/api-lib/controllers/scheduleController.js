@@ -1,14 +1,15 @@
 import pool from '../db.js';
+import { calculateDistance, getTravelTime } from '../services/geoService.js';
 
 export const getSupportWorkers = async (req, res) => {
   try {
-    const { tenant_id, target_date, target_time, duration_hours } = req.query;
+    const { tenant_id, target_date, target_time, duration_hours, target_suburb } = req.query;
 
     if (target_date && target_time && duration_hours) {
       const targetDatetime = `${target_date} ${target_time}:00`;
       
       const query = `
-        SELECT w.id, w.name, w.qualifications, w.service_areas,
+        SELECT w.id, w.name, w.qualifications, w.service_areas, w.home_suburb, w.max_travel_km,
                wa.start_time as baseline_start, wa.end_time as baseline_end,
                
                CASE WHEN wa.id IS NULL THEN false
@@ -41,6 +42,7 @@ export const getSupportWorkers = async (req, res) => {
         let is_available = true;
         let availability_reason = '';
         
+        // 1. Availability Logic
         if (!row.is_baseline_available) {
           is_available = false;
           availability_reason = 'Outside contracted hours';
@@ -54,15 +56,37 @@ export const getSupportWorkers = async (req, res) => {
           availability_reason = `${row.baseline_start?.substring(0,5) || '00:00'} \u2013 ${row.baseline_end?.substring(0,5) || '23:59'}`;
         }
         
+        // 2. Logistics Calculation (The "Origin Point" logic)
+        const distanceKm = calculateDistance(row.home_suburb || 'Hobart', target_suburb || 'Hobart');
+        const travelTimeMin = getTravelTime(distanceKm);
+        const withinTravelRadius = distanceKm <= (row.max_travel_km || 30);
+
+        if (is_available && !withinTravelRadius) {
+           is_available = false;
+           availability_reason = `Exceeds max travel (${distanceKm}km)`;
+        }
+
+        // 3. Scoring Engine (Logistical Score)
+        // Lower distance and fewer conflicts = higher score
+        const logisticalScore = is_available ? Math.max(0, 100 - (distanceKm * 2)) : 0;
+
         return {
           id: row.id,
           name: row.name,
           qualifications: row.qualifications,
           service_areas: row.service_areas,
+          home_suburb: row.home_suburb,
+          distance_km: distanceKm,
+          travel_time_min: travelTimeMin,
+          logistical_score: logisticalScore,
           is_available,
           availability_reason
         };
       });
+
+      // Sort by score (Ranked recommendations)
+      parsed.sort((a, b) => b.logistical_score - a.logistical_score);
+
       return res.json(parsed);
 
     } else {

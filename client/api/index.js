@@ -92,14 +92,18 @@ app.get('/api/migrate', async (req, res) => {
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS requested_services TEXT[];
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS raw_data JSONB;
       
+      -- Support Workers Additions
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS home_suburb VARCHAR(100);
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS max_travel_km INTEGER DEFAULT 30;
+      
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
-      INSERT INTO support_workers (tenant_id, name, qualifications, service_areas)
+      INSERT INTO support_workers (tenant_id, name, qualifications, service_areas, home_suburb, max_travel_km)
       VALUES 
-        ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Certificate III in Individual Support', ARRAY['Hobart','Kingston']),
-        ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Certificate IV in Ageing Support', ARRAY['Glenorchy','Hobart']),
-        ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'])
+        ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Certificate III in Individual Support', ARRAY['Hobart','Kingston'], 'Kingston', 25),
+        ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Certificate IV in Ageing Support', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35),
+        ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'], 'Bellerive', 40)
       ON CONFLICT DO NOTHING;
       INSERT INTO referrals (tenant_id, client_name, dob, gender, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
       VALUES 
