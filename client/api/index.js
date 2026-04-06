@@ -148,6 +148,11 @@ app.get('/api/migrate', async (req, res) => {
         UNIQUE(worker_id, day_of_week)
       );
       
+      -- Ensure column level migrations for worker_availability
+      ALTER TABLE worker_availability ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE;
+      ALTER TABLE worker_availability ADD COLUMN IF NOT EXISTS start_time TIME WITHOUT TIME ZONE;
+      ALTER TABLE worker_availability ADD COLUMN IF NOT EXISTS end_time TIME WITHOUT TIME ZONE;
+      
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
