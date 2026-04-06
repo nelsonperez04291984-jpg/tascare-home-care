@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './db.js';
+import referralRoutes from './routes/referralRoutes.js';
+import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
 
 dotenv.config();
 
@@ -95,9 +97,6 @@ app.get('/api/migrate', async (req, res) => {
 });
 
 // Routes
-import referralRoutes from './routes/referralRoutes.js';
-import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
-
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 

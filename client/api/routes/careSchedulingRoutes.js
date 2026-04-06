@@ -4,14 +4,14 @@ import { createVisit, getWeeklySchedule, getSupportWorkers } from '../controller
 
 const router = express.Router();
 
+// Scheduling Routes — MUST be before /:client_id to avoid Express param capture
+router.get('/workers', getSupportWorkers);
+router.get('/visits', getWeeklySchedule);
+router.post('/visits', createVisit);
+
 // Care Plan Routes
 router.post('/', createCarePlan);
 router.get('/:client_id', getClientCarePlan);
 router.patch('/:id', updateCarePlan);
-
-// Scheduling Routes
-router.post('/visits', createVisit);
-router.get('/visits', getWeeklySchedule);
-router.get('/workers', getSupportWorkers);
 
 export default router;
