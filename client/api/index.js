@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pool from './db.js';
-import referralRoutes from './routes/referralRoutes.js';
-import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
+import pool from '../api-lib/db.js';
+import referralRoutes from '../api-lib/routes/referralRoutes.js';
+import careSchedulingRoutes from '../api-lib/routes/careSchedulingRoutes.js';
+import adminRoutes from '../api-lib/routes/adminRoutes.js';
 
 dotenv.config();
 
