@@ -101,6 +101,22 @@ app.get('/api/migrate', async (req, res) => {
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS raw_data JSONB;
       
       -- Support Workers (Phase 9 Upgrade)
+      CREATE TABLE IF NOT EXISTS support_workers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(30),
+        email VARCHAR(255),
+        employment_type VARCHAR(50) DEFAULT 'Casual',
+        has_car BOOLEAN DEFAULT FALSE,
+        home_suburb VARCHAR(100),
+        max_travel_km INTEGER DEFAULT 30,
+        is_active BOOLEAN DEFAULT TRUE,
+        qualifications TEXT,
+        service_areas TEXT[],
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS email VARCHAR(255);
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50);
