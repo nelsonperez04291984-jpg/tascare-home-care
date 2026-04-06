@@ -15,9 +15,10 @@ import {
   CheckCircle2,
   Phone,
   Mail,
+  AlertCircle,
+  RefreshCw,
   Award,
   ClipboardCheck,
-  AlertCircle,
   ShieldCheck,
   ArrowRight,
   X,
@@ -138,6 +139,21 @@ const TenantSettings = () => {
       alert(`❌ User Creation Failed: ${msg}`);
     }
     setSaving(false);
+  };
+
+  const handleRepair = async () => {
+    setSaving(true);
+    try {
+      const res = await axios.get('/api/admin/repair');
+      alert(res.data.message || '✅ Database repair successful!');
+      fetchData();
+    } catch (e) {
+      console.error('Repair Error:', e);
+      const msg = e.response?.data?.detail || e.response?.data?.error || e.message;
+      alert(`❌ Repair failed: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddWorker = async (e) => {
@@ -373,11 +389,21 @@ const TenantSettings = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="font-extrabold text-xl text-slate-800">Support Personnel Registry</h3>
-                {!isAddingWorker && (
-                  <button onClick={() => setIsAddingWorker(true)} className="clinical-btn-primary flex items-center gap-2 text-sm px-6">
-                    <Plus size={18} /> New Support Worker
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleRepair} 
+                    disabled={saving}
+                    className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-clinical-600 transition-colors bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm"
+                  >
+                    <RefreshCw size={14} className={saving ? 'animate-spin' : ''} />
+                    <span>{saving ? 'Repairing...' : 'Sync & Repair'}</span>
                   </button>
-                )}
+                  {!isAddingWorker && (
+                    <button onClick={() => setIsAddingWorker(true)} className="clinical-btn-primary flex items-center gap-2 text-sm px-6">
+                      <Plus size={18} /> New Support Worker
+                    </button>
+                  )}
+                </div>
               </div>
 
               {isAddingWorker ? (
