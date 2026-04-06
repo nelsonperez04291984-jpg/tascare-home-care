@@ -111,6 +111,16 @@ app.get('/api/migrate', async (req, res) => {
         size_bytes INTEGER,
         uploaded_at TIMESTAMPTZ DEFAULT NOW()
       );
+      ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100) UNIQUE;
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS suburb VARCHAR(100);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS postcode VARCHAR(10);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(255);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(30);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS emergency_contact_relationship VARCHAR(100);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS requested_services TEXT[];
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS raw_data JSONB;
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
