@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar, Shield } from 'lucide-react';
 
 // Components
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,7 @@ import PublicReferral from './pages/PublicReferral';
 import CarePlanBuilder from './pages/CarePlanBuilder';
 import SchedulingDashboard from './pages/SchedulingDashboard';
 import HomeDashboard from './pages/HomeDashboard';
+import StaffManagement from './pages/StaffManagement';
 
 const NavLink = ({ to, icon: Icon, label }) => {
   const location = useLocation();
@@ -25,7 +26,7 @@ const NavLink = ({ to, icon: Icon, label }) => {
   );
 };
 
-const Navigation = () => (
+const Navigation = ({ isAdmin, setIsAdmin }) => (
   <nav className="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white p-6 hidden md:flex flex-col">
     <div className="flex items-center gap-3 mb-12 px-2">
       <div className="w-10 h-10 bg-clinical-500 rounded-xl flex items-center justify-center rotate-3 shadow-lg">
@@ -43,20 +44,30 @@ const Navigation = () => (
       <NavLink to="/scheduling" icon={Calendar} label="Scheduling" />
       <NavLink to="/clients" icon={Users} label="Clients" />
       <NavLink to="/public-referral" icon={FilePlus} label="New Referral" />
+      {isAdmin && <NavLink to="/staff" icon={Shield} label="Staff Settings" />}
     </div>
 
-    <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
-      <p className="text-xs text-slate-400 mb-1">Region</p>
-      <p className="text-sm font-semibold text-clinical-400">Tasmania (South)</p>
+    <div className="mt-4 p-4 bg-slate-800 rounded-xl border border-slate-700">
+      <p className="text-xs text-slate-400 mb-2">Simulate Role</p>
+      <div className="flex bg-slate-900 rounded-lg p-1">
+        <button onClick={() => setIsAdmin(false)} className={`flex-1 text-[10px] uppercase tracking-wider font-bold py-1.5 rounded ${!isAdmin ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>Coord</button>
+        <button onClick={() => setIsAdmin(true)} className={`flex-1 text-[10px] uppercase tracking-wider font-bold py-1.5 rounded ${isAdmin ? 'bg-clinical-600 text-white' : 'text-slate-500'}`}>Admin</button>
+      </div>
+      <div className="mt-4 pt-4 border-t border-slate-700">
+        <p className="text-xs text-slate-400 mb-1">Region</p>
+        <p className="text-sm font-semibold text-clinical-400">Tasmania (South)</p>
+      </div>
     </div>
   </nav>
 );
 
 function App() {
+  const [isAdmin, setIsAdmin] = useState(true);
+
   return (
     <Router>
       <div className="min-h-screen flex">
-        <Navigation />
+        <Navigation isAdmin={isAdmin} setIsAdmin={setIsAdmin} />
         <main className="flex-1 md:ml-64 p-8">
           <Routes>
             <Route path="/" element={<HomeDashboard />} />
@@ -64,6 +75,7 @@ function App() {
             <Route path="/public-referral" element={<PublicReferral />} />
             <Route path="/care-plan/:clientId" element={<CarePlanBuilder />} />
             <Route path="/scheduling" element={<SchedulingDashboard />} />
+            <Route path="/staff" element={<StaffManagement />} />
             <Route path="/clients" element={<div className="text-2xl font-bold p-12 glass rounded-2xl">Client Directory (Coming Soon)</div>} />
           </Routes>
         </main>

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import pool from './db.js';
 import referralRoutes from './routes/referralRoutes.js';
 import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -146,6 +147,7 @@ app.get('/api/migrate', async (req, res) => {
 // Routes
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Export for Vercel Serverless — no app.listen()
 export default app;
