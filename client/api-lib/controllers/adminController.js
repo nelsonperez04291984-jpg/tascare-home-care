@@ -51,6 +51,10 @@ export const createWorker = async (req, res) => {
   const client = await pool.connect();
   try {
     const tenant_id = req.user.tenant_id;
+    if (!tenant_id) {
+      return res.status(401).json({ error: 'Your session is missing an Organization ID. Please Log out and Log back in.' });
+    }
+
     const { 
       name, home_suburb, max_travel_km, phone, email, 
       employment_type, has_car, services, qualifications 
@@ -144,8 +148,16 @@ export const updateTenant = async (req, res) => {
 export const repairDatabase = async (req, res) => {
   try {
     const tenant_id = req.user.tenant_id;
-    // 1. Repair rows
-    const repairResult = await pool.query(`UPDATE support_workers SET is_active = true WHERE is_active IS NULL`);
+    if (!tenant_id) throw new Error('Cannot repair: Your account is missing a Tenant ID. Please Log out and Log in again.');
+
+    // 1. Repair rows (Both status and ghosted tenant_ids)
+    const repairResult = await pool.query(
+      `UPDATE support_workers 
+       SET is_active = true, 
+           tenant_id = COALESCE(tenant_id, $1) 
+       WHERE is_active IS NULL OR tenant_id IS NULL`, 
+      [tenant_id]
+    );
     
     // 2. Diagnostics
     const tenantCount = await pool.query(`SELECT COUNT(*) FROM support_workers WHERE tenant_id = $1`, [tenant_id]);

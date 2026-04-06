@@ -11,7 +11,11 @@ export const login = async (req, res) => {
     // We allow a simulated superadmin override for emergencies during demo
     if (email === 'admin@tascare.com' && password === 'admin') {
        return res.json({
-          token: jwt.sign({ id: 'admin', role: 'admin' }, JWT_SECRET),
+          token: jwt.sign({ 
+            id: 'admin', 
+            role: 'admin', 
+            tenant_id: '00000000-0000-0000-0000-000000000000' 
+          }, JWT_SECRET),
           user: { id: 'admin', name: 'System Admin', email: 'admin@tascare.com', role: 'admin', tenant_id: '00000000-0000-0000-0000-000000000000' }
        });
     }
