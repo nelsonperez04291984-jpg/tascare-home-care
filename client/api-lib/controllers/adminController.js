@@ -60,11 +60,12 @@ export const createWorker = async (req, res) => {
 
     // 1. Insert Base Worker
     const workerRes = await client.query(
-      `INSERT INTO support_workers (tenant_id, name, home_suburb, max_travel_km, phone, email, employment_type, has_car) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      `INSERT INTO support_workers (tenant_id, name, home_suburb, max_travel_km, phone, email, employment_type, has_car, is_active) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true) RETURNING id`,
       [tenant_id, name, home_suburb, max_travel_km || 30, phone, email, employment_type || 'Casual', has_car || false]
     );
     const workerId = workerRes.rows[0].id;
+    console.log(`[SYSTEM] Worker ${name} created with ID ${workerId} for tenant ${tenant_id}`);
 
     // 2. Insert Services
     if (services && Array.isArray(services)) {

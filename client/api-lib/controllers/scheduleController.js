@@ -4,6 +4,7 @@ import { calculateDistance, getTravelTime } from '../services/geoService.js';
 export const getSupportWorkers = async (req, res) => {
   try {
     const tenant_id = req.user.tenant_id;
+    console.log(`[DEBUG] Fetching workers for tenant: ${tenant_id}`);
     const { target_date, target_time, duration_hours, target_suburb, service_type } = req.query;
 
     if (target_date && target_time && duration_hours) {
@@ -154,6 +155,7 @@ export const getSupportWorkers = async (req, res) => {
         WHERE w.tenant_id = $1 AND w.is_active = true
       `;
       const listResult = await pool.query(listQuery, [tenant_id]);
+      console.log(`[DEBUG] Found ${listResult.rows.length} workers for tenant ${tenant_id}`);
       const mapped = listResult.rows.map(r => ({ 
         ...r, 
         is_compliant: parseInt(r.missing_mandatory_quals || 0) === 0,
