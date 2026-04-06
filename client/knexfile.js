@@ -11,7 +11,7 @@ export default {
       database: 'home_care_db'
     },
     migrations: {
-      directory: './src/migrations'
+      directory: './api/migrations'
     }
   },
   production: {
@@ -21,7 +21,7 @@ export default {
       ssl: { rejectUnauthorized: false }
     },
     migrations: {
-      directory: './src/migrations'
+      directory: './api/migrations'
     }
   }
 };

@@ -7,7 +7,6 @@ import knexConfig from '../knexfile.js';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
 
 // Initialize Database
 const env = process.env.NODE_ENV || 'development';
@@ -16,9 +15,9 @@ const db = knex(knexConfig[env]);
 app.use(cors());
 app.use(express.json());
 
-// Basic Route
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Home Care Management API' });
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'TasCare API', env });
 });
 
 // Import Routes
@@ -28,8 +27,6 @@ import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
+// CRITICAL: Export for Vercel Serverless (do NOT call app.listen)
 export { db };
+export default app;
