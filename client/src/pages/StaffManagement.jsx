@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { User, Shield, Briefcase, Plus, Trash2, Loader2, CheckCircle2, ShieldCore } from 'lucide-react';
+import { User, Shield, Briefcase, Plus, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const TENANT_ID = '00000000-0000-0000-0000-000000000000';
