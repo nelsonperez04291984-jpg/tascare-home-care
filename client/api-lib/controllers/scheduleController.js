@@ -132,13 +132,29 @@ export const getSupportWorkers = async (req, res) => {
       return res.json(parsed);
 
     } else {
-      const tenant_id = req.user.tenant_id;
-      const result = await pool.query(
-        `SELECT * FROM support_workers WHERE tenant_id = $1 AND is_active = true`,
-        [tenant_id]
-      );
-      // Give them a default for the sake of the grid outside the modal if needed
-      const mapped = result.rows.map(r => ({ ...r, is_available: true, availability_reason: 'Unknown' }));
+      const listQuery = `
+        SELECT w.*,
+               -- Compliance Check (Missing/Expired Mandatory Govt Quals)
+               (SELECT COUNT(qt.id) 
+                FROM qualification_types qt
+                WHERE qt.is_government_locked = true AND qt.is_mandatory = true
+                  AND NOT EXISTS (
+                    SELECT 1 FROM worker_qualifications wq 
+                    WHERE wq.worker_id = w.id AND wq.type_id = qt.id 
+                      AND (wq.expiry_date IS NULL OR wq.expiry_date > CURRENT_DATE)
+                      AND wq.verified = true
+                  )
+               ) as missing_mandatory_quals
+        FROM support_workers w
+        WHERE w.tenant_id = $1 AND w.is_active = true
+      `;
+      const listResult = await pool.query(listQuery, [tenant_id]);
+      const mapped = listResult.rows.map(r => ({ 
+        ...r, 
+        is_compliant: parseInt(r.missing_mandatory_quals || 0) === 0,
+        is_available: true, 
+        availability_reason: 'Unknown' 
+      }));
       return res.json(mapped);
     }
   } catch (error) {
