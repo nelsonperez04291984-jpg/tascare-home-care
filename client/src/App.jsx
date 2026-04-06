@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar } from 'lucide-react';
 
 // Components
 import Dashboard from './pages/Dashboard';
