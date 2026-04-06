@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar, Shield, LogOut, PiggyBank } from 'lucide-react';
 import axios from 'axios';
 
 // Components
@@ -10,6 +10,7 @@ import CarePlanBuilder from './pages/CarePlanBuilder';
 import SchedulingDashboard from './pages/SchedulingDashboard';
 import HomeDashboard from './pages/HomeDashboard';
 import StaffManagement from './pages/StaffManagement';
+import BillingDashboard from './pages/BillingDashboard';
 import Login from './pages/Login';
 
 const NavLink = ({ to, icon: Icon, label }) => {
@@ -44,6 +45,7 @@ const Navigation = ({ currentUser, onLogout }) => (
       <NavLink to="/" icon={LayoutDashboard} label="Overview" />
       <NavLink to="/referrals" icon={ClipboardList} label="Referrals" />
       <NavLink to="/scheduling" icon={Calendar} label="Scheduling" />
+      <NavLink to="/billing" icon={PiggyBank} label="Invoicing" />
       <NavLink to="/clients" icon={Users} label="Clients" />
       <NavLink to="/public-referral" icon={FilePlus} label="New Referral" />
       {currentUser?.role === 'admin' && <NavLink to="/staff" icon={Shield} label="Staff Settings" />}
@@ -111,6 +113,7 @@ function App() {
                 <Route path="/referrals" element={<Dashboard />} />
                 <Route path="/care-plan/:clientId" element={<CarePlanBuilder />} />
                 <Route path="/scheduling" element={<SchedulingDashboard />} />
+                <Route path="/billing" element={<BillingDashboard />} />
                 <Route path="/public-referral" element={<PublicReferral />} />
                 {currentUser.role === 'admin' && (
                   <Route path="/staff" element={<StaffManagement />} />

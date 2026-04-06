@@ -25,11 +25,39 @@ const CarePlanBuilder = () => {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [goals, setGoals] = useState([{ id: 1, text: '', priority: 'Medium' }]);
   const [services, setServices] = useState([
     { id: 1, type: 'Personal Care', hours: 2, frequency: 'weekly', rate: 65 }
   ]);
-  const [hcpLevel, setHcpLevel] = useState('3'); // Default for demo
+  const [hcpLevel, setHcpLevel] = useState('3'); 
+  const [carePlanId, setCarePlanId] = useState(null);
+
+  useEffect(() => {
+    const initPage = async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch Referral Data
+        const refRes = await axios.get(`/api/referrals/${clientId}`);
+        setClient(refRes.data);
+        setHcpLevel(refRes.data.hcp_level?.toString() || '3');
+
+        // 2. Try to fetch existing care plan
+        const planRes = await axios.get(`/api/care-scheduling/${clientId}`);
+        if (planRes.data) {
+          setCarePlanId(planRes.data.id);
+          setGoals(typeof planRes.data.goals === 'string' ? JSON.parse(planRes.data.goals) : planRes.data.goals);
+          setServices(typeof planRes.data.services === 'string' ? JSON.parse(planRes.data.services) : planRes.data.services);
+        }
+      } catch (err) {
+        console.error("Initialization failed", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initPage();
+  }, [clientId]);
 
   // Monthly breakdown calculation
   const calculateMonthlySpend = () => {
@@ -63,20 +91,35 @@ const CarePlanBuilder = () => {
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
-      await axios.post('/api/care-scheduling', {
-        client_id: clientId || '00000000-0000-0000-0000-000000000000',
+      const payload = {
+        client_id: clientId,
         tenant_id: '00000000-0000-0000-0000-000000000000',
         goals,
         services,
-        monthly_budget: monthlyAllowance
-      });
-      alert('Care Plan Saved Successfully');
-      navigate('/');
+        monthly_budget: monthlyAllowance,
+        hcp_level: parseInt(hcpLevel)
+      };
+
+      if (carePlanId) {
+        await axios.patch(`/api/care-scheduling/${carePlanId}`, payload);
+      } else {
+        await axios.post('/api/care-scheduling', payload);
+      }
+
+      alert('Clinical Care Plan persisted to the registry.');
+      navigate('/referrals');
     } catch (err) {
       console.error("Save failed", err);
+      alert('Error saving care plan: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSaving(false);
     }
   };
+
+  if (loading) return <div className="p-12 text-center text-slate-400">Loading Clinical Profile...</div>;
+  if (!client) return <div className="p-12 text-center text-rose-500">Could not identify client.</div>;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -87,7 +130,7 @@ const CarePlanBuilder = () => {
           </button>
           <div>
             <h2 className="text-3xl font-bold text-slate-800">Clinical Care Plan Builder</h2>
-            <p className="text-slate-500 italic">Designing support for Sarah Mitchell (HCP Level {hcpLevel})</p>
+            <p className="text-slate-500 italic">Designing support for {client.client_name} (HCP Level {hcpLevel})</p>
           </div>
         </div>
         <button onClick={handleSave} className="clinical-btn-primary flex items-center gap-2">

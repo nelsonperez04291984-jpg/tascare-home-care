@@ -31,6 +31,23 @@ export const getReferrals = async (req, res) => {
   }
 };
 
+export const getReferralById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM referrals WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Referral not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching referral by ID:', error);
+    res.status(500).json({ error: 'Failed to fetch referral', detail: error.message });
+  }
+};
+
 export const updateReferralStatus = async (req, res) => {
   try {
     const { id } = req.params;

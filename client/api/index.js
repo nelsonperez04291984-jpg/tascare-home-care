@@ -6,6 +6,7 @@ import referralRoutes from '../api-lib/routes/referralRoutes.js';
 import careSchedulingRoutes from '../api-lib/routes/careSchedulingRoutes.js';
 import adminRoutes from '../api-lib/routes/adminRoutes.js';
 import authRoutes from '../api-lib/routes/authRoutes.js';
+import billingRoutes from '../api-lib/routes/billingRoutes.js';
 
 dotenv.config();
 
@@ -50,6 +51,11 @@ app.get('/api/migrate', async (req, res) => {
         tenant_id UUID REFERENCES tenants(id),
         client_name VARCHAR(255) NOT NULL,
         dob DATE,
+        gender VARCHAR(50),
+        aboriginal_status VARCHAR(100),
+        disability_status VARCHAR(100),
+        country_of_birth VARCHAR(100),
+        language_spoken VARCHAR(100),
         my_aged_care_id VARCHAR(50),
         phone VARCHAR(30),
         address TEXT,
@@ -69,66 +75,12 @@ app.get('/api/migrate', async (req, res) => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
-      CREATE TABLE IF NOT EXISTS support_workers (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID REFERENCES tenants(id),
-        name VARCHAR(255) NOT NULL,
-        qualifications TEXT,
-        service_areas TEXT[],
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS care_plans (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID REFERENCES tenants(id),
-        client_id UUID,
-        goals JSONB DEFAULT '[]',
-        services JSONB DEFAULT '[]',
-        monthly_budget NUMERIC(10,2),
-        hcp_level INTEGER,
-        status VARCHAR(50) DEFAULT 'active',
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS schedules (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID REFERENCES tenants(id),
-        client_id UUID,
-        worker_id UUID REFERENCES support_workers(id),
-        service_type VARCHAR(100),
-        scheduled_at TIMESTAMPTZ NOT NULL,
-        duration_hours NUMERIC(4,2),
-        status VARCHAR(50) DEFAULT 'scheduled',
-        notes TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS clinical_documents (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID REFERENCES tenants(id),
-        referral_id UUID REFERENCES referrals(id) ON DELETE CASCADE,
-        file_name VARCHAR(255) NOT NULL,
-        blob_url TEXT NOT NULL,
-        blob_pathname TEXT,
-        content_type VARCHAR(100),
-        size_bytes INTEGER,
-        uploaded_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS worker_availability (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
-        day_of_week INTEGER,
-        start_time TIME,
-        end_time TIME,
-        UNIQUE (worker_id, day_of_week)
-      );
-      CREATE TABLE IF NOT EXISTS worker_time_off (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
-        start_datetime TIMESTAMPTZ,
-        end_datetime TIMESTAMPTZ,
-        reason VARCHAR(255)
-      );
-      ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100) UNIQUE;
+      -- Migration: add columns to existing table
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS aboriginal_status VARCHAR(100);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS disability_status VARCHAR(100);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS country_of_birth VARCHAR(100);
+      ALTER TABLE referrals ADD COLUMN IF NOT EXISTS language_spoken VARCHAR(100);
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS suburb VARCHAR(100);
@@ -138,6 +90,7 @@ app.get('/api/migrate', async (req, res) => {
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS emergency_contact_relationship VARCHAR(100);
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS requested_services TEXT[];
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS raw_data JSONB;
+      
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
@@ -147,11 +100,11 @@ app.get('/api/migrate', async (req, res) => {
         ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Certificate IV in Ageing Support', ARRAY['Glenorchy','Hobart']),
         ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'])
       ON CONFLICT DO NOTHING;
-      INSERT INTO referrals (tenant_id, client_name, dob, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
+      INSERT INTO referrals (tenant_id, client_name, dob, gender, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
       VALUES 
-        ('00000000-0000-0000-0000-000000000000', 'John Smith', '1945-05-20', 'HCP', 3, '1-882736', 'Royal Hobart Hospital', 'Hobart', 'Post-discharge support. High fall risk. Needs help with showering and meal prep 3x weekly.', 'new'),
-        ('00000000-0000-0000-0000-000000000000', 'Mary Brown', '1938-11-12', 'CHSP', NULL, NULL, 'Family Enquiry', 'Kingston', 'Daughter enquiring about social support and transport for shopping.', 'contacted'),
-        ('00000000-0000-0000-0000-000000000000', 'Robert Lee', '1940-03-08', 'HCP', 2, '1-994421', 'GP Referral', 'Glenorchy', 'Mild dementia. Requires medication reminders and companionship twice weekly.', 'assessment_scheduled')
+        ('00000000-0000-0000-0000-000000000000', 'John Smith', '1945-05-20', 'Male', 'HCP', 3, '1-882736', 'Royal Hobart Hospital', 'Hobart', 'Post-discharge support. High fall risk. Needs help with showering and meal prep 3x weekly.', 'accepted'),
+        ('00000000-0000-0000-0000-000000000000', 'Mary Brown', '1938-11-12', 'Female', 'CHSP', NULL, NULL, 'Family Enquiry', 'Kingston', 'Daughter enquiring about social support and transport for shopping.', 'contacted'),
+        ('00000000-0000-0000-0000-000000000000', 'Robert Lee', '1940-03-08', 'Male', 'HCP', 2, '1-994421', 'GP Referral', 'Glenorchy', 'Mild dementia. Requires medication reminders and companionship twice weekly.', 'assessment_scheduled')
       ON CONFLICT DO NOTHING;
       
       -- Seed availability for Monday to Friday (1 to 5) 09:00 to 17:00 for everyone
@@ -172,6 +125,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/billing', billingRoutes);
 
 // Export for Vercel Serverless — no app.listen()
 export default app;

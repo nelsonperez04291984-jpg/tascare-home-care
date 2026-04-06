@@ -274,11 +274,21 @@ const ReferralDashboard = () => {
                             </div>
                           )}
                           {['accepted', 'declined'].includes(ref.status) && (
-                            <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
-                              ref.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
-                            }`}>
-                              {ref.status}
-                            </span>
+                            <div className="flex justify-end gap-2">
+                              <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                                ref.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-rose-100 text-rose-700'
+                              }`}>
+                                {ref.status}
+                              </span>
+                              {ref.status === 'accepted' && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); window.location.href = `/care-plan/${ref.id}`; }}
+                                  className="px-3 py-1.5 bg-clinical-600 hover:bg-clinical-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                                >
+                                  <ClipboardList size={14} /> Care Plan
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </motion.tr>
