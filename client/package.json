@@ -7,16 +7,27 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "migrate": "knex migrate:latest",
+    "seed": "knex seed:run"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.2.0",
     "axios": "^1.6.8",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "framer-motion": "^11.0.24",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
     "lucide-react": "^0.364.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.11.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
-    "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.2"
   },
   "devDependencies": {
