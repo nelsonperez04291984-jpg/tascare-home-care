@@ -5,6 +5,7 @@ import pool from '../api-lib/db.js';
 import referralRoutes from '../api-lib/routes/referralRoutes.js';
 import careSchedulingRoutes from '../api-lib/routes/careSchedulingRoutes.js';
 import adminRoutes from '../api-lib/routes/adminRoutes.js';
+import authRoutes from '../api-lib/routes/authRoutes.js';
 
 dotenv.config();
 
@@ -145,6 +146,7 @@ app.get('/api/migrate', async (req, res) => {
 });
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 app.use('/api/admin', adminRoutes);
