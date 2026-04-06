@@ -107,6 +107,7 @@ app.get('/api/migrate', async (req, res) => {
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS has_car BOOLEAN DEFAULT FALSE;
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS home_suburb VARCHAR(100);
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS max_travel_km INTEGER DEFAULT 30;
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
       -- Qualification Types
       CREATE TABLE IF NOT EXISTS qualification_types (
@@ -134,6 +135,18 @@ app.get('/api/migrate', async (req, res) => {
         competency_level INTEGER DEFAULT 1,
         UNIQUE(worker_id, service_type)
       );
+
+      -- Support Worker Availability (Phase 10: Structural MVP)
+      CREATE TABLE IF NOT EXISTS worker_availability (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+        day_of_week INTEGER NOT NULL, -- 0 (Sun) to 6 (Sat)
+        start_time TIME WITHOUT TIME ZONE,
+        end_time TIME WITHOUT TIME ZONE,
+        active BOOLEAN DEFAULT TRUE,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(worker_id, day_of_week)
+      );
       
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
@@ -154,6 +167,7 @@ app.get('/api/migrate', async (req, res) => {
         ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Cert IV', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35, 'Casual', TRUE),
         ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'RN', ARRAY['Clarence','Hobart'], 'Bellerive', 40, 'Full-time', FALSE)
       ON CONFLICT DO NOTHING;
+
       INSERT INTO referrals (tenant_id, client_name, dob, gender, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
       VALUES 
         ('00000000-0000-0000-0000-000000000000', 'John Smith', '1945-05-20', 'Male', 'HCP', 3, '1-882736', 'Royal Hobart Hospital', 'Hobart', 'Post-discharge support. High fall risk. Needs help with showering and meal prep 3x weekly.', 'accepted'),
@@ -161,11 +175,12 @@ app.get('/api/migrate', async (req, res) => {
         ('00000000-0000-0000-0000-000000000000', 'Robert Lee', '1940-03-08', 'Male', 'HCP', 2, '1-994421', 'GP Referral', 'Glenorchy', 'Mild dementia. Requires medication reminders and companionship twice weekly.', 'assessment_scheduled')
       ON CONFLICT DO NOTHING;
       
-      -- Seed availability for Monday to Friday (1 to 5) 09:00 to 17:00 for everyone
-      INSERT INTO worker_availability (worker_id, day_of_week, start_time, end_time)
-      SELECT id, d.day_of_week, '09:00:00', '17:00:00'
+      -- Seed availability ONLY for demo workers (Sarah, Michael, Aroha)
+      INSERT INTO worker_availability (worker_id, day_of_week, start_time, end_time, active)
+      SELECT id, d.day_of_week, '09:00:00', '17:00:00', TRUE
       FROM support_workers
       CROSS JOIN generate_series(1, 5) AS d(day_of_week)
+      WHERE tenant_id = '00000000-0000-0000-0000-000000000000'
       ON CONFLICT (worker_id, day_of_week) DO NOTHING;
     `);
     res.json({ success: true, message: '✅ All tables created and seeded with availability engine data!' });

@@ -1,11 +1,13 @@
 import express from 'express';
 import { createCarePlan, getClientCarePlan, updateCarePlan } from '../controllers/carePlanController.js';
-import { createVisit, getWeeklySchedule, getSupportWorkers } from '../controllers/scheduleController.js';
+import { createVisit, getWeeklySchedule, getSupportWorkers, getWorkerAvailability, updateWorkerAvailability } from '../controllers/scheduleController.js';
 
 const router = express.Router();
 
 // Scheduling Routes — MUST be before /:client_id to avoid Express param capture
 router.get('/workers', getSupportWorkers);
+router.get('/workers/:id/availability', getWorkerAvailability);
+router.post('/workers/:id/availability', updateWorkerAvailability);
 router.get('/visits', getWeeklySchedule);
 router.post('/visits', createVisit);
 

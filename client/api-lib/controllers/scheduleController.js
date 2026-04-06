@@ -71,7 +71,10 @@ export const getSupportWorkers = async (req, res) => {
         
         // 2. Fundamental Availability Logic
         if (is_available) {
-          if (!row.is_baseline_available) {
+          if (!row.baseline_start) { // No availability defined at all for this day
+            is_available = false;
+            availability_reason = 'No availability configured';
+          } else if (!row.is_baseline_available) {
             is_available = false;
             availability_reason = 'Outside contracted hours';
           } else if (parseInt(row.leave_conflicts) > 0) {
@@ -144,7 +147,9 @@ export const getSupportWorkers = async (req, res) => {
                       AND (wq.expiry_date IS NULL OR wq.expiry_date > CURRENT_DATE)
                       AND wq.verified = true
                   )
-               ) as missing_mandatory_quals
+               ) as missing_mandatory_quals,
+               -- Check if availability is configured (At least one day)
+               (SELECT COUNT(wa.id) FROM worker_availability wa WHERE wa.worker_id = w.id AND wa.active = true) as availability_count
         FROM support_workers w
         WHERE w.tenant_id = $1 AND w.is_active = true
       `;
@@ -152,6 +157,7 @@ export const getSupportWorkers = async (req, res) => {
       const mapped = listResult.rows.map(r => ({ 
         ...r, 
         is_compliant: parseInt(r.missing_mandatory_quals || 0) === 0,
+        has_availability: parseInt(r.availability_count || 0) > 0,
         is_available: true, 
         availability_reason: 'Unknown' 
       }));
@@ -160,6 +166,52 @@ export const getSupportWorkers = async (req, res) => {
   } catch (error) {
     console.error('Error fetching workers:', error);
     res.status(500).json({ error: 'Failed to fetch workers', detail: error.message });
+  }
+};
+
+export const getWorkerAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT day_of_week, start_time, end_time, active FROM worker_availability WHERE worker_id = $1 ORDER BY day_of_week ASC`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching availability:', error);
+    res.status(500).json({ error: 'Failed to fetch worker availability' });
+  }
+};
+
+export const updateWorkerAvailability = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { availability } = req.body; // Array of {day_of_week, start_time, end_time, active}
+
+    await client.query('BEGIN');
+    
+    // Simple approach: Delete existing and insert new
+    await client.query('DELETE FROM worker_availability WHERE worker_id = $1', [id]);
+    
+    for (const day of availability) {
+      if (day.active) {
+        await client.query(
+          `INSERT INTO worker_availability (worker_id, day_of_week, start_time, end_time, active)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [id, day.day_of_week, day.start_time, day.end_time, true]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error updating availability:', error);
+    res.status(500).json({ error: 'Failed to update worker availability' });
+  } finally {
+    client.release();
   }
 };
 
