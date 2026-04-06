@@ -90,11 +90,15 @@ export const createWorker = async (req, res) => {
     await client.query('COMMIT');
     res.status(201).json({ id: workerId, name });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error('Failed to create worker:', error);
-    res.status(500).json({ error: 'Failed to create worker', detail: error.message });
+    res.status(500).json({ 
+      error: 'Failed to create worker', 
+      detail: error.message,
+      code: error.code // Include PG error code if available
+    });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };
 

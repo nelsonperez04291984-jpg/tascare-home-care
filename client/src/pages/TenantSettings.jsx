@@ -140,9 +140,10 @@ const TenantSettings = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.post('/api/admin/workers', { 
+      const response = await axios.post('/api/admin/workers', { 
         ...workerForm
       });
+      alert(`✅ Support worker "${response.data.name}" registered successfully!`);
       setIsAddingWorker(false);
       setOnboardingStep(1);
       setWorkerForm({ 
@@ -151,7 +152,11 @@ const TenantSettings = () => {
         services: [], qualifications: []
       });
       fetchData();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error('Add Worker Error:', e);
+      const msg = e.response?.data?.detail || e.response?.data?.error || e.message;
+      alert(`❌ Registration Failed: ${msg}`);
+    }
     setSaving(false);
   };
   
