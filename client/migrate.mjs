@@ -58,16 +58,41 @@ CREATE TABLE IF NOT EXISTS referrals (
 );
 
 -- Support Workers
-CREATE TABLE IF NOT EXISTS support_workers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID REFERENCES tenants(id),
-  name VARCHAR(255) NOT NULL,
-  qualifications TEXT,
-  service_areas TEXT[],
   is_active BOOLEAN DEFAULT TRUE,
   home_suburb VARCHAR(100),
   max_travel_km INTEGER DEFAULT 30,
+  phone VARCHAR(30),
+  email VARCHAR(255),
+  employment_type VARCHAR(50) DEFAULT 'Casual',
+  has_car BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Qualification Types (Goverment vs Agency)
+CREATE TABLE IF NOT EXISTS qualification_types (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) UNIQUE NOT NULL,
+  is_government_locked BOOLEAN DEFAULT FALSE,
+  is_mandatory BOOLEAN DEFAULT FALSE
+);
+
+-- Worker Qualifications
+CREATE TABLE IF NOT EXISTS worker_qualifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+  type_id UUID REFERENCES qualification_types(id) ON DELETE CASCADE,
+  expiry_date DATE,
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Worker Authorized Services
+CREATE TABLE IF NOT EXISTS worker_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+  service_type VARCHAR(100) NOT NULL,
+  competency_level INTEGER DEFAULT 1,
+  UNIQUE(worker_id, service_type)
 );
 
 -- Care Plans
@@ -116,20 +141,41 @@ INSERT INTO tenants (id, name, subdomain, state)
 VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
 ON CONFLICT (id) DO NOTHING;
 
--- Sample Support Workers
-INSERT INTO support_workers (tenant_id, name, qualifications, service_areas, home_suburb, max_travel_km)
+-- Seed Mandatory Qualification Types
+INSERT INTO qualification_types (name, is_government_locked, is_mandatory)
 VALUES 
-  ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Certificate III in Individual Support', ARRAY['Hobart','Kingston'], 'Kingston', 25),
-  ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Certificate IV in Ageing Support', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35),
-  ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'], 'Bellerive', 40)
+  ('NDIS Worker Screening Check', TRUE, TRUE),
+  ('Police Check', TRUE, TRUE),
+  ('First Aid / CPR', TRUE, TRUE),
+  ('Manual Handling', FALSE, TRUE),
+  ('Dementia Care Training', FALSE, FALSE),
+  ('Medication Administration', FALSE, FALSE)
+ON CONFLICT (name) DO NOTHING;
+
+-- Seed Sample Support Workers with extended data
+INSERT INTO support_workers (tenant_id, name, qualifications, service_areas, home_suburb, max_travel_km, phone, email, employment_type, has_car)
+VALUES 
+  ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Cert III Individual Support', ARRAY['Hobart','Kingston'], 'Kingston', 25, '0400111222', 'sarah.o@tascare.com.au', 'Part-time', TRUE),
+  ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Cert IV Ageing Support', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35, '0400333444', 'michael.c@tascare.com.au', 'Casual', TRUE),
+  ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'EN', ARRAY['Clarence','Hobart'], 'Bellerive', 40, '0400555666', 'aroha.w@tascare.com.au', 'Full-time', FALSE)
 ON CONFLICT DO NOTHING;
 
--- Sample Referrals (demo data)
-INSERT INTO referrals (tenant_id, client_name, dob, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
-VALUES 
-  ('00000000-0000-0000-0000-000000000000', 'John Smith', '1945-05-20', 'HCP', 3, '1-882736', 'Royal Hobart Hospital', 'Hobart', 'Post-discharge support. High fall risk. Needs help with showering and meal prep 3x weekly.', 'new'),
-  ('00000000-0000-0000-0000-000000000000', 'Mary Brown', '1938-11-12', 'CHSP', NULL, NULL, 'Family Enquiry', 'Kingston', 'Daughter enquiring about social support and transport for shopping in Kingston area.', 'contacted'),
-  ('00000000-0000-0000-0000-000000000000', 'Robert Lee', '1940-03-08', 'HCP', 2, '1-994421', 'GP Referral', 'Glenorchy', 'Mild dementia. Requires medication reminders and companionship visits twice weekly.', 'assessment_scheduled')
+-- Seed Sample Service Authorizations
+INSERT INTO worker_services (worker_id, service_type)
+SELECT id, 'Personal Care' FROM support_workers WHERE name = 'Sarah O''Brien'
+ON CONFLICT DO NOTHING;
+INSERT INTO worker_services (worker_id, service_type)
+SELECT id, 'Community Access' FROM support_workers WHERE name = 'Sarah O''Brien'
+ON CONFLICT DO NOTHING;
+INSERT INTO worker_services (worker_id, service_type)
+SELECT id, 'Nursing Care' FROM support_workers WHERE name = 'Aroha Williams'
+ON CONFLICT DO NOTHING;
+
+-- Seed Sample Qualifications (Valid)
+INSERT INTO worker_qualifications (worker_id, type_id, expiry_date, verified)
+SELECT w.id, q.id, '2027-01-01', TRUE 
+FROM support_workers w, qualification_types q
+WHERE w.name = 'Sarah O''Brien' AND q.name = 'Police Check'
 ON CONFLICT DO NOTHING;
 `;
 

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
 const BillingDashboard = () => {
   const [summary, setSummary] = useState([]);
@@ -28,7 +27,7 @@ const BillingDashboard = () => {
 
   const fetchBillingData = async () => {
     try {
-      const res = await axios.get(`/api/billing/summary?tenant_id=${TENANT_ID}`);
+      const res = await axios.get('/api/billing/summary');
       setSummary(res.data);
     } catch (err) {
       console.error("Failed to fetch billing summary", err);
@@ -40,7 +39,7 @@ const BillingDashboard = () => {
   const handleDexExport = async () => {
     setExporting(true);
     try {
-      const response = await axios.get(`/api/billing/export-dex?tenant_id=${TENANT_ID}`, {
+      const response = await axios.get('/api/billing/export-dex', {
         responseType: 'blob',
       });
       

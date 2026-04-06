@@ -3,7 +3,8 @@ import { parseReferral } from '../services/aiService.js';
 
 export const createReferral = async (req, res) => {
   try {
-    const { tenant_id, client_name, dob, funding_type, hcp_level, my_aged_care_id, referral_source, summary, service_area } = req.body;
+    const tenant_id = req.user.tenant_id;
+    const { client_name, dob, funding_type, hcp_level, my_aged_care_id, referral_source, summary, service_area } = req.body;
     
     const result = await pool.query(
       `INSERT INTO referrals (tenant_id, client_name, dob, funding_type, hcp_level, my_aged_care_id, referral_source, summary, service_area, status)
@@ -19,7 +20,7 @@ export const createReferral = async (req, res) => {
 
 export const getReferrals = async (req, res) => {
   try {
-    const { tenant_id } = req.query;
+    const tenant_id = req.user.tenant_id;
     const result = await pool.query(
       `SELECT * FROM referrals WHERE tenant_id = $1 ORDER BY created_at DESC`,
       [tenant_id]
@@ -34,12 +35,13 @@ export const getReferrals = async (req, res) => {
 export const getReferralById = async (req, res) => {
   try {
     const { id } = req.params;
+    const tenant_id = req.user.tenant_id;
     const result = await pool.query(
-      `SELECT * FROM referrals WHERE id = $1`,
-      [id]
+      `SELECT * FROM referrals WHERE id = $1 AND tenant_id = $2`,
+      [id, tenant_id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Referral not found' });
+      return res.status(404).json({ error: 'Referral not found or unauthorized' });
     }
     res.json(result.rows[0]);
   } catch (error) {
@@ -52,10 +54,15 @@ export const updateReferralStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const tenant_id = req.user.tenant_id;
+
     const result = await pool.query(
-      `UPDATE referrals SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [status, id]
+      `UPDATE referrals SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
+      [status, id, tenant_id]
     );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Referral not found or unauthorized' });
+    }
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating referral status:', error);

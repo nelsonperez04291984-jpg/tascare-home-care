@@ -47,7 +47,7 @@ const calculateSLK = (name, dob, gender) => {
 
 export const getBillingSummary = async (req, res) => {
   try {
-    const { tenant_id } = req.query;
+    const tenant_id = req.user.tenant_id;
     
     // 1. Fetch all referrals with their care plans and schedules
     const query = `
@@ -91,7 +91,7 @@ export const getBillingSummary = async (req, res) => {
 
 export const getDexExport = async (req, res) => {
   try {
-    const { tenant_id } = req.query;
+    const tenant_id = req.user.tenant_id;
     
     const query = `
       SELECT r.*, cp.services as plan_services

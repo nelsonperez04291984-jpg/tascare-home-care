@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
 const WEEK_DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const SERVICE_TYPES = [
@@ -86,7 +85,7 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
     const checkAvailability = async () => {
       setCheckingAvailability(true);
       try {
-        const res = await axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}&target_date=${form.scheduled_date}&target_time=${form.scheduled_time}&duration_hours=${form.duration_hours}&target_suburb=${form.client_suburb}`);
+        const res = await axios.get(`/api/care-scheduling/workers?target_date=${form.scheduled_date}&target_time=${form.scheduled_time}&duration_hours=${form.duration_hours}&target_suburb=${form.client_suburb}&service_type=${form.service_type}`);
         setAvailableWorkers(res.data);
         
         // If the currently selected worker becomes unavailable, auto-deselect them to prevent errors
@@ -103,7 +102,7 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
       }
     };
     checkAvailability();
-  }, [form.scheduled_date, form.scheduled_time, form.duration_hours, form.client_suburb]);
+  }, [form.scheduled_date, form.scheduled_time, form.duration_hours, form.client_suburb, form.service_type]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,7 +126,6 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
         
         const scheduled_at = `${fmtDate(nextDate)}T${form.scheduled_time}:00`;
         datesToSchedule.push(axios.post('/api/care-scheduling/visits', {
-          tenant_id:      TENANT_ID,
           worker_id:      form.worker_id,
           client_id:      null,
           service_type:   form.service_type,
@@ -315,36 +313,62 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
                 ) : availableWorkers.map((w, idx) => {
                   const isSelected = form.worker_id === w.id;
                   const isAvailable = w.is_available;
-                  const isBestMatch = idx === 0 && isAvailable; // Already sorted by score on backend
+                  const isBestMatch = idx === 0 && isAvailable;
+                  
+                  const complianceColor = w.compliance_status === 'non_compliant' ? 'text-rose-500' : 
+                                         w.compliance_status === 'warning' ? 'text-amber-500' : 'text-emerald-500';
                   
                   return (
                     <div 
                       key={w.id} 
                       onClick={() => isAvailable && set('worker_id', w.id)}
-                      className={`transition-all border-2 rounded-2xl p-4 relative
-                        ${!isAvailable ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-200 grayscale' : 'cursor-pointer hover:border-clinical-200 hover:bg-slate-50 border-slate-100'} 
-                        ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100 opacity-100 grayscale-0' : ''}`}
+                      className={`transition-all border-2 rounded-2xl p-4 relative overflow-hidden
+                        ${!isAvailable ? 'opacity-60 cursor-not-allowed bg-slate-50 border-slate-200' : 'cursor-pointer hover:border-clinical-200 hover:bg-slate-50 border-slate-100'} 
+                        ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100 opacity-100' : ''}`}
                     >
+                      {/* Capability Match Score Tag */}
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-slate-100 border-l border-b border-slate-200 rounded-bl-xl text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                        <TrendingUp size={10} className="text-clinical-500"/>
+                        {w.logistical_score}% Match
+                      </div>
+
                       {isBestMatch && (
-                        <div className="absolute -top-2.5 -left-1 px-2 py-0.5 bg-emerald-500 text-white rounded-md text-[8px] font-black uppercase tracking-widest shadow-sm z-10">
-                          Best Logistical Match
+                        <div className="absolute top-2 left-0 px-2 py-0.5 bg-emerald-500 text-white rounded-r-md text-[8px] font-black uppercase tracking-widest shadow-sm z-10">
+                          Best Match
                         </div>
                       )}
                       
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className={`font-bold ${!isAvailable ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{w.name}</p>
-                          <div className={`flex items-center gap-1.5 text-xs mt-1 font-medium ${isAvailable ? 'text-emerald-600' : 'text-rose-500'}`}>
-                            {isAvailable ? <CheckCircle2 size={12}/> : <AlertCircle size={12}/>} 
+                      <div className="flex items-start justify-between mt-1">
+                        <div className="flex-1 pr-12">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-bold ${!isAvailable ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{w.name}</p>
+                            {w.compliance_status === 'compliant' && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
+                            {w.compliance_status === 'warning' && <div className="w-2 h-2 rounded-full bg-amber-500 shadow-sm"></div>}
+                            {w.compliance_status === 'non_compliant' && <div className="w-2 h-2 rounded-full bg-rose-500 shadow-sm"></div>}
+                          </div>
+
+                          <div className={`flex items-center gap-1.5 text-xs mt-1 font-medium ${complianceColor}`}>
+                            {w.is_available ? <CheckCircle2 size={12}/> : <AlertCircle size={12}/>} 
                             {w.availability_reason || 'Unknown'}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
-                            <MapPin size={12} className={isBestMatch ? "text-rose-500" : "text-blue-500"}/> 
-                            <span className="font-bold">{w.distance_km}km</span> from {w.home_suburb || 'Base'}
-                            <span className="text-[10px] text-slate-400 italic"> (~{w.travel_time_min}m travel)</span>
+                          
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                              <MapPin size={10} className="text-clinical-400"/> 
+                              <span className="font-bold">{w.distance_km}km</span>
+                            </div>
+                            {w.is_authorized ? (
+                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                                <ShieldCheck size={10}/> AUTHORIZED
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+                                <AlertTriangle size={10}/> NO AUTH
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-clinical-500 border-clinical-500 text-white' : 'border-slate-200 bg-white'}`}>
+                        <div className={`mt-2 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-clinical-500 border-clinical-500 text-white' : 'border-slate-200 bg-white'}`}>
                           {isSelected && <CheckCircle2 size={14} />}
                         </div>
                       </div>
@@ -401,8 +425,8 @@ const SchedulingDashboard = () => {
     setError(null);
     try {
       const [wRes, vRes] = await Promise.all([
-        axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}`),
-        axios.get(`/api/care-scheduling/visits?tenant_id=${TENANT_ID}&start_date=${startStr}&end_date=${endStr}`),
+        axios.get('/api/care-scheduling/workers'),
+        axios.get(`/api/care-scheduling/visits?start_date=${startStr}&end_date=${endStr}`),
       ]);
       setWorkers(wRes.data);
       setVisits(vRes.data);

@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
 const COLORS = ['#0ea5e9', '#10b981', '#6366f1', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const AnalyticsDashboard = () => {
@@ -28,7 +27,7 @@ const AnalyticsDashboard = () => {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const res = await axios.get(`/api/analytics/insights?tenant_id=${TENANT_ID}`);
+        const res = await axios.get('/api/analytics/insights');
         setData(res.data);
       } catch (err) {
         console.error("Failed to fetch analytics", err);

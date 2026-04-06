@@ -80,9 +80,12 @@ function App() {
 
   const fetchBranding = async () => {
     try {
-      const res = await axios.get('/api/admin/tenant?id=00000000-0000-0000-0000-000000000000');
+      // Backend now resolves tenant from JWT session
+      const res = await axios.get('/api/admin/tenant');
       setTenant(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error('Branding fetch failed:', e); 
+    }
   };
 
   useEffect(() => {
@@ -102,6 +105,7 @@ function App() {
     localStorage.setItem('tascare_user', JSON.stringify(user));
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setCurrentUser(user);
+    // Branding fetch will happen naturally or can be called here
     fetchBranding();
   };
 

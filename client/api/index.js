@@ -8,6 +8,7 @@ import adminRoutes from '../api-lib/routes/adminRoutes.js';
 import authRoutes from '../api-lib/routes/authRoutes.js';
 import billingRoutes from '../api-lib/routes/billingRoutes.js';
 import analyticsRoutes from '../api-lib/routes/analyticsRoutes.js';
+import { authMiddleware } from '../api-lib/middleware/authMiddleware.js';
 
 dotenv.config();
 
@@ -26,8 +27,15 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// DB setup — visit /api/migrate in browser to create all tables
+// DB setup — visit /api/migrate?key=YOUR_SECRET in browser to create tables
 app.get('/api/migrate', async (req, res) => {
+  const { key } = req.query;
+  const ADMIN_MIGRATE_KEY = process.env.ADMIN_MIGRATE_KEY || 'tascare-dev-reset-2024';
+  
+  if (key !== ADMIN_MIGRATE_KEY) {
+    return res.status(403).json({ error: 'Unauthorized migration request. Invalid Key.' });
+  }
+
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS tenants (
@@ -92,18 +100,59 @@ app.get('/api/migrate', async (req, res) => {
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS requested_services TEXT[];
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS raw_data JSONB;
       
-      -- Support Workers Additions
+      -- Support Workers (Phase 9 Upgrade)
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50);
+      ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS has_car BOOLEAN DEFAULT FALSE;
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS home_suburb VARCHAR(100);
       ALTER TABLE support_workers ADD COLUMN IF NOT EXISTS max_travel_km INTEGER DEFAULT 30;
+
+      -- Qualification Types
+      CREATE TABLE IF NOT EXISTS qualification_types (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) UNIQUE NOT NULL,
+        is_government_locked BOOLEAN DEFAULT FALSE,
+        is_mandatory BOOLEAN DEFAULT FALSE
+      );
+
+      -- Worker Qualifications
+      CREATE TABLE IF NOT EXISTS worker_qualifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+        type_id UUID REFERENCES qualification_types(id) ON DELETE CASCADE,
+        expiry_date DATE,
+        verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- Worker Authorized Services
+      CREATE TABLE IF NOT EXISTS worker_services (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+        service_type VARCHAR(100) NOT NULL,
+        competency_level INTEGER DEFAULT 1,
+        UNIQUE(worker_id, service_type)
+      );
       
       INSERT INTO tenants (id, name, subdomain, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'tascare-south', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
-      INSERT INTO support_workers (tenant_id, name, qualifications, service_areas, home_suburb, max_travel_km)
+
+      -- Seed Mandatory Qualifications
+      INSERT INTO qualification_types (name, is_government_locked, is_mandatory)
       VALUES 
-        ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Certificate III in Individual Support', ARRAY['Hobart','Kingston'], 'Kingston', 25),
-        ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Certificate IV in Ageing Support', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35),
-        ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'], 'Bellerive', 40)
+        ('NDIS Worker Screening Check', TRUE, TRUE),
+        ('Police Check', TRUE, TRUE),
+        ('First Aid / CPR', TRUE, TRUE),
+        ('Manual Handling', FALSE, TRUE)
+      ON CONFLICT (name) DO NOTHING;
+
+      INSERT INTO support_workers (tenant_id, name, qualifications, service_areas, home_suburb, max_travel_km, employment_type, has_car)
+      VALUES 
+        ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Cert III', ARRAY['Hobart','Kingston'], 'Kingston', 25, 'Part-time', TRUE),
+        ('00000000-0000-0000-0000-000000000000', 'Michael Chang', 'Cert IV', ARRAY['Glenorchy','Hobart'], 'Glenorchy', 35, 'Casual', TRUE),
+        ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'RN', ARRAY['Clarence','Hobart'], 'Bellerive', 40, 'Full-time', FALSE)
       ON CONFLICT DO NOTHING;
       INSERT INTO referrals (tenant_id, client_name, dob, gender, funding_type, hcp_level, my_aged_care_id, referral_source, service_area, summary, status)
       VALUES 
@@ -127,11 +176,13 @@ app.get('/api/migrate', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/referrals', referralRoutes);
-app.use('/api/care-scheduling', careSchedulingRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/billing', billingRoutes);
-app.use('/api/analytics', analyticsRoutes);
+
+// Protected Clinical & Admin Routes (Multi-tenant enforced)
+app.use('/api/referrals', authMiddleware, referralRoutes);
+app.use('/api/care-scheduling', authMiddleware, careSchedulingRoutes);
+app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/billing', authMiddleware, billingRoutes);
+app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
 // Export for Vercel Serverless — no app.listen()
 export default app;

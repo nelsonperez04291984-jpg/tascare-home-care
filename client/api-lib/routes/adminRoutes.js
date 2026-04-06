@@ -2,7 +2,8 @@ import express from 'express';
 import { 
   getUsers, createUser, deleteUser, 
   createWorker, deleteWorker, 
-  getTenant, updateTenant 
+  getTenant, updateTenant,
+  getQualificationTypes 
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -16,8 +17,9 @@ router.get('/users', getUsers);
 router.post('/users', createUser);
 router.delete('/users/:id', deleteUser);
 
-// Worker management
+// Staff / Worker management
 router.post('/workers', createWorker);
 router.delete('/workers/:id', deleteWorker);
+router.get('/qualifications', getQualificationTypes);
 
 export default router;

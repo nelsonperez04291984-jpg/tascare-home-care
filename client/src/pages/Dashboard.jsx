@@ -21,7 +21,7 @@ const ReferralDashboard = () => {
 
   const fetchReferrals = async () => {
     try {
-      const res = await axios.get('/api/referrals?tenant_id=00000000-0000-0000-0000-000000000000');
+      const res = await axios.get('/api/referrals');
       setReferrals(res.data);
     } catch (err) {
       console.error("Fetch referrals failed", err);
@@ -50,7 +50,6 @@ const ReferralDashboard = () => {
     setTimeout(async () => {
       try {
         await axios.post('/api/referrals', {
-          tenant_id: '00000000-0000-0000-0000-000000000000',
           client_name: `MAC Import (${macId || '1-98242'})`,
           dob: '1942-05-20',
           contact_number: '0412 345 678',

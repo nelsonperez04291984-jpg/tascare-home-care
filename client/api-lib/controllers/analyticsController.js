@@ -2,7 +2,7 @@ import pool from '../db.js';
 
 export const getExecutiveInsights = async (req, res) => {
   try {
-    const { tenant_id } = req.query;
+    const tenant_id = req.user.tenant_id;
 
     // 1. KPI Stats
     const statsQuery = `

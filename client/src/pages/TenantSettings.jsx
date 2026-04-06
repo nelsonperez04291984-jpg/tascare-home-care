@@ -16,8 +16,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
-
 const TenantSettings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
@@ -38,9 +36,9 @@ const TenantSettings = () => {
     setLoading(true);
     try {
       const [tRes, uRes, wRes] = await Promise.all([
-        axios.get(`/api/admin/tenant?id=${TENANT_ID}`),
-        axios.get(`/api/admin/users?tenant_id=${TENANT_ID}`),
-        axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}`)
+        axios.get('/api/admin/tenant'),
+        axios.get('/api/admin/users'),
+        axios.get('/api/care-scheduling/workers')
       ]);
       setTenant(tRes.data);
       setUsers(uRes.data);
@@ -58,7 +56,7 @@ const TenantSettings = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.patch(`/api/admin/tenant/${TENANT_ID}`, tenant);
+      await axios.patch('/api/admin/tenant', tenant);
       alert('Organization settings updated successfully!');
       // Force reload to update sidebar branding if necessary, 
       // or just trust the local state for this view
@@ -74,7 +72,7 @@ const TenantSettings = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.post('/api/admin/users', { ...userForm, tenant_id: TENANT_ID });
+      await axios.post('/api/admin/users', { ...userForm });
       setIsAddingUser(false);
       setUserForm({ name: '', email: '', password: '', role: 'coordinator' });
       fetchData();
@@ -87,7 +85,6 @@ const TenantSettings = () => {
     setSaving(true);
     try {
       await axios.post('/api/admin/workers', { 
-        tenant_id: TENANT_ID,
         name: workerForm.name,
         qualifications: workerForm.qualifications,
         service_areas: workerForm.service_areas.split(',').map(s => s.trim()).filter(Boolean)
