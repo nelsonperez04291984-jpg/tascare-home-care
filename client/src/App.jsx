@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar, Shield, LogOut, PiggyBank, Settings } from 'lucide-react';
+import { LayoutDashboard, FilePlus, Users, ClipboardList, Activity, Calendar, Shield, LogOut, PiggyBank, Settings, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 
 // Components
