@@ -9,7 +9,6 @@ import PublicReferral from './pages/PublicReferral';
 import CarePlanBuilder from './pages/CarePlanBuilder';
 import SchedulingDashboard from './pages/SchedulingDashboard';
 import HomeDashboard from './pages/HomeDashboard';
-import StaffManagement from './pages/StaffManagement';
 import BillingDashboard from './pages/BillingDashboard';
 import TenantSettings from './pages/TenantSettings';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
@@ -53,7 +52,6 @@ const Navigation = ({ currentUser, onLogout, tenant }) => (
       <NavLink to="/public-referral" icon={FilePlus} label="New Referral" />
       {currentUser?.role === 'admin' && (
         <>
-          <NavLink to="/staff" icon={Shield} label="Staff & Compliance" />
           <NavLink to="/settings" icon={Settings} label="Admin Settings" />
         </>
       )}
@@ -141,7 +139,6 @@ function App() {
                 <Route path="/public-referral" element={<PublicReferral />} />
                 {currentUser.role === 'admin' && (
                   <>
-                    <Route path="/staff" element={<StaffManagement />} />
                     <Route path="/settings" element={<TenantSettings />} />
                   </>
                 )}

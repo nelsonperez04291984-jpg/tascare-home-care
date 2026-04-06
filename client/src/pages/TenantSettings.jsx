@@ -20,7 +20,9 @@ import {
   AlertCircle,
   ShieldCheck,
   ArrowRight,
-  X
+  X,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -52,6 +54,11 @@ const TenantSettings = () => {
     services: [], // Array of service names
     qualifications: [] // Array of { type_id, expiry_date, verified }
   });
+  
+  // Availability state
+  const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [tempAvailability, setTempAvailability] = useState([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -146,6 +153,42 @@ const TenantSettings = () => {
       fetchData();
     } catch (e) { console.error(e); }
     setSaving(false);
+  };
+  
+  const openAvailability = async (worker) => {
+    setSelectedWorker(worker);
+    try {
+      const res = await axios.get(`/api/care-scheduling/workers/${worker.id}/availability`);
+      // Ensure we have all 7 days represented
+      const days = [0,1,2,3,4,5,6].map(d => {
+        const existing = res.data.find(r => r.day_of_week === d);
+        return existing || { day_of_week: d, start_time: '09:00', end_time: '17:00', active: false };
+      });
+      setTempAvailability(days);
+      setIsAvailabilityModalOpen(true);
+    } catch (e) { console.error(e); }
+  };
+
+  const saveAvailability = async () => {
+    setSaving(true);
+    try {
+      await axios.post(`/api/care-scheduling/workers/${selectedWorker.id}/availability`, {
+        availability: tempAvailability
+      });
+      setIsAvailabilityModalOpen(false);
+      fetchData();
+    } catch (e) { console.error(e); }
+    setSaving(false);
+  };
+
+  const copyMondayToWeekdays = () => {
+    const monday = tempAvailability.find(d => d.day_of_week === 1);
+    if (!monday) return;
+    setTempAvailability(prev => prev.map(d => 
+      (d.day_of_week >= 1 && d.day_of_week <= 5) 
+        ? { ...d, start_time: monday.start_time, end_time: monday.end_time, active: monday.active } 
+        : d
+    ));
   };
 
   const deleteUser = async (id) => {
@@ -475,34 +518,175 @@ const TenantSettings = () => {
                 </motion.div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {workers.map(w => (
-                    <div key={w.id} className="flex items-center justify-between p-5 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                    <div key={w.id} className="bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden p-6">
                       <div className={`absolute left-0 top-0 h-full w-1.5 ${w.is_compliant === false ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
-                      <div className="flex items-center gap-4 pl-2">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-clinical-50 group-hover:text-clinical-600 transition-colors">
-                          <Briefcase size={26} />
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-800 text-lg leading-tight">{w.name}</p>
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mt-1">
-                            <MapPin size={12}/> {w.home_suburb || 'Region Home'}
-                            <span>·</span>
-                            <ShieldCheck size={12} className={w.is_compliant === false ? 'text-rose-500' : 'text-emerald-500'}/>
-                            <span className={w.is_compliant === false ? 'text-rose-600' : 'text-emerald-600'}>
-                              {w.is_compliant === false ? 'Audit Risk' : 'Compliant'}
-                            </span>
+                      
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-clinical-50 group-hover:text-clinical-600 transition-colors">
+                            <Briefcase size={26} />
+                          </div>
+                          <div>
+                            <p className="font-black text-slate-800 text-lg leading-tight">{w.name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-[10px] font-black text-clinical-600 uppercase tracking-widest">{w.employment_type}</p>
+                              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                              <div className="flex items-center gap-1">
+                                <div className={`w-2 h-2 rounded-full ${w.has_availability ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
+                                  {w.has_availability ? 'Available' : 'Offline'}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                        <button onClick={() => deleteWorker(w.id)} className="text-slate-200 hover:text-rose-500 transition-colors p-2">
+                          <Trash2 size={20} />
+                        </button>
                       </div>
-                      <button onClick={() => deleteWorker(w.id)} className="text-slate-200 hover:text-rose-500 transition-colors p-2"><Trash2 size={20} /></button>
+
+                      {!w.has_availability && (
+                        <div className="mb-4 p-2 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2 text-[10px] font-bold text-amber-700 uppercase">
+                          <AlertCircle size={14}/>
+                          No availability configured
+                        </div>
+                      )}
+
+                      <div className="space-y-2 mb-6">
+                         <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                           <MapPin size={12} className="text-slate-300"/> {w.home_suburb || 'Region Home'}
+                         </div>
+                         <div className="flex items-center gap-2 text-xs font-bold">
+                            <ShieldCheck size={12} className={w.is_compliant === false ? 'text-rose-500' : 'text-emerald-500'}/>
+                            <span className={w.is_compliant === false ? 'text-rose-600' : 'text-emerald-600 uppercase tracking-tight'}>
+                              {w.is_compliant === false ? 'Audit Risk' : 'Compliant'}
+                            </span>
+                         </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-50 flex justify-end">
+                        <button 
+                          onClick={() => openAvailability(w)}
+                          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-clinical-600 hover:text-clinical-700 transition-colors group"
+                        >
+                          Manage Availability <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform"/>
+                        </button>
+                      </div>
                     </div>
-                  ))}
                 </div>
               )}
             </div>
           )}
 
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAvailabilityModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden"
+            >
+              <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-black">Manage Availability</h3>
+                  <p className="text-slate-400 text-xs">Configure weekly shift pattern for {selectedWorker?.name}</p>
+                </div>
+                <button onClick={() => setIsAvailabilityModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <X size={20}/>
+                </button>
+              </div>
+
+              <div className="p-6">
+                 <div className="flex justify-between items-center mb-6">
+                    <p className="text-sm font-bold text-slate-500">Define active working hours for each day:</p>
+                    <button 
+                      onClick={copyMondayToWeekdays}
+                      className="text-[10px] font-black uppercase tracking-widest text-clinical-600 hover:bg-clinical-50 px-3 py-1.5 rounded-lg transition-colors border border-clinical-100"
+                    >
+                      Copy Monday to Weekdays
+                    </button>
+                 </div>
+
+                 <div className="space-y-3">
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((dayName, idx) => {
+                      const day = tempAvailability.find(d => d.day_of_week === idx) || { active: false };
+                      return (
+                        <div key={dayName} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all ${day.active ? 'border-clinical-200 bg-clinical-50/30' : 'border-slate-100 bg-slate-50 opacity-60'}`}>
+                           <div className="w-24">
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                 <input 
+                                   type="checkbox" 
+                                   checked={day.active} 
+                                   onChange={e => {
+                                     const updated = [...tempAvailability];
+                                     const dIdx = updated.findIndex(d => d.day_of_week === idx);
+                                     updated[dIdx] = { ...updated[dIdx], active: e.target.checked };
+                                     setTempAvailability(updated);
+                                   }}
+                                   className="w-5 h-5 rounded-md accent-clinical-600"
+                                 />
+                                 <span className={`text-sm font-bold ${day.active ? 'text-slate-800' : 'text-slate-400'}`}>{dayName}</span>
+                              </label>
+                           </div>
+                           
+                           <div className={`flex-1 flex items-center gap-4 transition-all ${day.active ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                              <div className="flex-1 flex items-center gap-2">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase">Starts</span>
+                                 <input 
+                                   type="time" 
+                                   value={day.start_time?.substring(0,5) || '09:00'} 
+                                   onChange={e => {
+                                     const updated = [...tempAvailability];
+                                     const dIdx = updated.findIndex(d => d.day_of_week === idx);
+                                     updated[dIdx] = { ...updated[dIdx], start_time: e.target.value };
+                                     setTempAvailability(updated);
+                                   }}
+                                   className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-clinical-500"
+                                 />
+                              </div>
+                              <div className="flex-1 flex items-center gap-2">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase">Ends</span>
+                                 <input 
+                                   type="time" 
+                                   value={day.end_time?.substring(0,5) || '17:00'} 
+                                   onChange={e => {
+                                     const updated = [...tempAvailability];
+                                     const dIdx = updated.findIndex(d => d.day_of_week === idx);
+                                     updated[dIdx] = { ...updated[dIdx], end_time: e.target.value };
+                                     setTempAvailability(updated);
+                                   }}
+                                   className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-clinical-500"
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                      )
+                    })}
+                 </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                 <button 
+                   onClick={() => setIsAvailabilityModalOpen(false)}
+                   className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-700"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   onClick={saveAvailability}
+                   disabled={saving}
+                   className="bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl px-8 py-2.5 font-bold text-sm shadow-lg shadow-clinical-200 transition-all active:scale-95 disabled:grayscale"
+                 >
+                   {saving ? 'Saving...' : 'Save Shift Pattern'}
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
