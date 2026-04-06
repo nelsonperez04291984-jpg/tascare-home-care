@@ -143,8 +143,19 @@ export const updateTenant = async (req, res) => {
 
 export const repairDatabase = async (req, res) => {
   try {
-    const result = await pool.query(`UPDATE support_workers SET is_active = true WHERE is_active IS NULL`);
-    res.json({ success: true, message: `✅ Repaired ${result.rowCount} staff records. They should now be visible.` });
+    const tenant_id = req.user.tenant_id;
+    // 1. Repair rows
+    const repairResult = await pool.query(`UPDATE support_workers SET is_active = true WHERE is_active IS NULL`);
+    
+    // 2. Diagnostics
+    const tenantCount = await pool.query(`SELECT COUNT(*) FROM support_workers WHERE tenant_id = $1`, [tenant_id]);
+    const globalCount = await pool.query(`SELECT COUNT(*) FROM support_workers`);
+    
+    res.json({ 
+      success: true, 
+      message: `✅ Repair complete. [ID: ${tenant_id}]`,
+      detail: `Your Tenant: ${tenantCount.rows[0].count} workers. Global Total: ${globalCount.rows[0].count} workers. Repaired: ${repairResult.rowCount}`
+    });
   } catch (error) {
     console.error('Repair failed:', error);
     res.status(500).json({ error: 'Repair failed', detail: error.message });

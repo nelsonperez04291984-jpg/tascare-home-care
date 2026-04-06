@@ -145,7 +145,7 @@ const TenantSettings = () => {
     setSaving(true);
     try {
       const res = await axios.get('/api/admin/repair');
-      alert(res.data.message || '✅ Database repair successful!');
+      alert(`${res.data.message}\n\n${res.data.detail || ''}`);
       fetchData();
     } catch (e) {
       console.error('Repair Error:', e);
