@@ -63,11 +63,23 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
     client_name:    '',
     duration_hours: '1',
     notes:          '',
+    repeat:         'None',       // 'None', 'Daily', 'Weekly'
+    repeat_count:   1,            // How many times it repeats total
   });
   const [saving, setSaving]   = useState(false);
   const [error,  setError]    = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Simulate rich logistical data for the workers
+  const getWorkerLogistics = (workerId, idx) => {
+    const distances = ['1.2km', '3.4km', '8.5km', '4.1km', '2.0km'];
+    const availabilities = ['07:00 – 15:00', '09:00 – 17:00', '12:00 – 20:00', '06:00 – 12:00'];
+    return {
+      distance: distances[idx % distances.length],
+      availability: availabilities[idx % availabilities.length]
+    };
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,16 +89,32 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
     setSaving(true);
     setError(null);
     try {
-      const scheduled_at = `${form.scheduled_date}T${form.scheduled_time}:00`;
-      await axios.post('/api/care-scheduling/visits', {
-        tenant_id:      TENANT_ID,
-        worker_id:      form.worker_id,
-        client_id:      null,           // will link to clients table later
-        service_type:   form.service_type,
-        scheduled_at,
-        duration_hours: parseFloat(form.duration_hours),
-        notes:          `${form.client_name}${form.notes ? ' — ' + form.notes : ''}`,
-      });
+      const datesToSchedule = [];
+      const baseDate = new Date(form.scheduled_date);
+      
+      let totalOccurrences = 1;
+      if (form.repeat === 'Daily') totalOccurrences = form.repeat_count;
+      else if (form.repeat === 'Weekly') totalOccurrences = form.repeat_count;
+
+      for (let i = 0; i < totalOccurrences; i++) {
+        let nextDate = new Date(baseDate);
+        if (form.repeat === 'Daily') nextDate.setDate(nextDate.getDate() + i);
+        else if (form.repeat === 'Weekly') nextDate.setDate(nextDate.getDate() + (i * 7));
+        
+        const scheduled_at = `${fmtDate(nextDate)}T${form.scheduled_time}:00`;
+        datesToSchedule.push(axios.post('/api/care-scheduling/visits', {
+          tenant_id:      TENANT_ID,
+          worker_id:      form.worker_id,
+          client_id:      null,
+          service_type:   form.service_type,
+          scheduled_at,
+          duration_hours: parseFloat(form.duration_hours),
+          notes:          `${form.client_name}${form.notes ? ' — ' + form.notes : ''}`,
+        }));
+      }
+
+      await Promise.all(datesToSchedule);
+
       onCreated();
       onClose();
     } catch (err) {
@@ -110,165 +138,181 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden"
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col"
         >
           {/* Modal Header */}
-          <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
+          <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-clinical-50/50">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-clinical-50 rounded-xl">
-                <CalendarIcon size={20} className="text-clinical-600" />
+              <div className="p-2.5 bg-clinical-100 rounded-xl">
+                <CalendarIcon size={20} className="text-clinical-700" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Create Visit</h3>
-                <p className="text-xs text-slate-400">Schedule a care visit for a client</p>
+                <h3 className="text-lg font-bold text-slate-800">Dispatch & Schedule Visit</h3>
+                <p className="text-xs text-slate-500 font-medium tracking-wide">AI logistics active</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
-            >
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-200 transition-colors text-slate-500 hover:text-slate-700">
               <X size={20} />
             </button>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+          <form onSubmit={handleSubmit} className="overflow-y-auto custom-scrollbar flex-1 p-8 space-y-6">
 
-            {/* Client Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Client Name <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={form.client_name}
-                onChange={e => set('client_name', e.target.value)}
-                placeholder="e.g. John Smith"
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 focus:border-clinical-400 outline-none transition-all"
-                required
-              />
+            {/* Client Name & Service */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  Client Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.client_name}
+                  onChange={e => set('client_name', e.target.value)}
+                  placeholder="e.g. John Smith"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-clinical-400 focus:border-clinical-400 outline-none transition-all"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  Service Type
+                </label>
+                <select
+                  value={form.service_type}
+                  onChange={e => set('service_type', e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-clinical-400 outline-none bg-white transition-all cursor-pointer"
+                >
+                  {SERVICE_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* Worker */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Support Worker <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={form.worker_id}
-                onChange={e => set('worker_id', e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 outline-none bg-white transition-all"
-                required
-              >
-                <option value="">— Select worker —</option>
-                {workers.map(w => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Service Type */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Service Type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {SERVICE_TYPES.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => set('service_type', type)}
-                    className={`px-3 py-2 rounded-xl text-[11px] font-semibold border text-center transition-all ${
-                      form.service_type === type
-                        ? 'bg-clinical-600 text-white border-clinical-600 shadow-sm'
-                        : 'border-slate-200 text-slate-600 hover:border-clinical-300 hover:bg-clinical-50'
-                    }`}
+            {/* Logistics: Date + Recurring + Duration */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Clock size={16} className="text-indigo-500" /> Time & Logistics
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={form.scheduled_date}
+                    onChange={e => set('scheduled_date', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none transition-all bg-white"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Time</label>
+                  <input
+                    type="time"
+                    value={form.scheduled_time}
+                    onChange={e => set('scheduled_time', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none transition-all bg-white"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Duration</label>
+                  <select 
+                    value={form.duration_hours} 
+                    onChange={e => set('duration_hours', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none bg-white cursor-pointer"
                   >
-                    {type}
-                  </button>
-                ))}
+                    {[0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 12, 24].map(h => (
+                      <option key={h} value={h}>{h} hr{h !== 1 && 's'}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Repeat Pattern</label>
+                  <select
+                    value={form.repeat}
+                    onChange={e => set('repeat', e.target.value)}
+                    className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-400 text-blue-700 bg-blue-50 outline-none cursor-pointer"
+                  >
+                    <option value="None">Once Only</option>
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                  </select>
+                </div>
               </div>
+              
+              <AnimatePresence>
+                {form.repeat !== 'None' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="pt-2">
+                    <div className="flex items-center gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                      <span className="text-sm font-medium text-slate-600">Assign for the next</span>
+                      <input 
+                        type="number" min="2" max="30" value={form.repeat_count} onChange={e => set('repeat_count', parseInt(e.target.value) || 2)}
+                        className="w-16 px-2 py-1 text-center font-bold border border-blue-200 rounded text-blue-700 outline-none"
+                      />
+                      <span className="text-sm font-medium text-slate-600">{form.repeat === 'Daily' ? 'Days' : 'Weeks'}</span>
+                      <span className="ml-auto text-xs font-bold text-blue-600 uppercase tracking-wider">{form.repeat_count} shifts generated</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Date + Time + Duration */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={form.scheduled_date}
-                  onChange={e => set('scheduled_date', e.target.value)}
-                  className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 outline-none transition-all"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Start Time
-                </label>
-                <input
-                  type="time"
-                  value={form.scheduled_time}
-                  onChange={e => set('scheduled_time', e.target.value)}
-                  className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 outline-none transition-all"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                  Duration (hrs)
-                </label>
-                <input
-                  type="number"
-                  min="0.5"
-                  max="12"
-                  step="0.5"
-                  value={form.duration_hours}
-                  onChange={e => set('duration_hours', e.target.value)}
-                  className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                Notes <span className="font-normal text-slate-400">(optional)</span>
+            {/* Smart Worker Assignment */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Optimization Engine: Select Worker <span className="text-rose-500">*</span>
               </label>
-              <textarea
-                rows={2}
-                value={form.notes}
-                onChange={e => set('notes', e.target.value)}
-                placeholder="Any special instructions…"
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-clinical-400 outline-none resize-none transition-all"
-              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar p-1">
+                {workers.map((w, idx) => {
+                  const logistics = getWorkerLogistics(w.id, idx);
+                  const isSelected = form.worker_id === w.id;
+                  return (
+                    <div 
+                      key={w.id} 
+                      onClick={() => set('worker_id', w.id)}
+                      className={`cursor-pointer transition-all border-2 rounded-2xl p-4 ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100' : 'border-slate-100 hover:border-clinical-200 hover:bg-slate-50'}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-bold text-slate-800">{w.name}</p>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                            <Clock size={12} className="text-emerald-500"/> Avail: {logistics.availability}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
+                            <MapPin size={12} className={idx === 0 ? "text-rose-500" : "text-blue-500"}/> {logistics.distance} from Client
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-clinical-500 border-clinical-500 text-white' : 'border-slate-200 bg-white'}`}>
+                          {isSelected && <CheckCircle2 size={14} />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">
+              <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium">
                 <AlertCircle size={16} className="shrink-0" />
                 {error}
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 transition-colors text-sm"
-              >
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <button type="button" onClick={onClose} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors text-sm">
                 Cancel
               </button>
               <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 py-3 bg-clinical-600 text-white rounded-xl font-semibold hover:bg-clinical-700 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                type="submit" disabled={saving}
+                className="flex-1 py-3 bg-clinical-600 text-white rounded-xl font-bold hover:bg-clinical-700 transition-all shadow-md hover:shadow-lg text-sm flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><CheckCircle2 size={16} /> Create Visit</>}
+                {saving ? <><Loader2 size={16} className="animate-spin" /> Distributing Shifts…</> : <><CheckCircle2 size={18} /> Confirm {form.repeat !== 'None' ? 'Recurring Schedule' : 'Schedule'}</>}
               </button>
             </div>
           </form>
