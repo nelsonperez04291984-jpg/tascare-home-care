@@ -140,3 +140,13 @@ export const updateTenant = async (req, res) => {
     res.status(500).json({ error: 'Failed to update organization settings', detail: error.message, code: error.code });
   }
 };
+
+export const repairDatabase = async (req, res) => {
+  try {
+    const result = await pool.query(`UPDATE support_workers SET is_active = true WHERE is_active IS NULL`);
+    res.json({ success: true, message: `✅ Repaired ${result.rowCount} staff records. They should now be visible.` });
+  } catch (error) {
+    console.error('Repair failed:', error);
+    res.status(500).json({ error: 'Repair failed', detail: error.message });
+  }
+};
