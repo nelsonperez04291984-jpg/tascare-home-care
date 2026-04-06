@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --clinical-bg: #f8fafc;
+  --clinical-primary: #0284c7;
+  --clinical-secondary: #0ea5e9;
+  --clinical-accent: #c5a059;
+}
+
+body {
+  background-color: var(--clinical-bg);
+  @apply text-slate-900 font-sans;
+}
+
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+}
+
+.triage-card {
+  @apply rounded-xl p-4 transition-all hover:shadow-lg border border-slate-100 bg-white;
+}
+
+.clinical-btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-all active:scale-95 disabled:opacity-50;
+}
+
+.clinical-btn-primary {
+  @apply clinical-btn bg-clinical-600 text-white hover:bg-clinical-700;
+}
+
+.clinical-btn-outline {
+  @apply clinical-btn border border-slate-200 text-slate-700 hover:bg-slate-50;
+}
