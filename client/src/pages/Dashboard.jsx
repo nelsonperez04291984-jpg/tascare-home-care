@@ -14,7 +14,7 @@ const ReferralDashboard = () => {
 
   const fetchReferrals = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/referrals?tenant_id=00000000-0000-0000-0000-000000000000');
+      const res = await axios.get('/api/referrals?tenant_id=00000000-0000-0000-0000-000000000000');
       setReferrals(res.data);
     } catch (err) {
       console.error("Fetch referrals failed", err);
@@ -25,7 +25,7 @@ const ReferralDashboard = () => {
 
   const updateStatus = async (id, newStatus) => {
     try {
-      await axios.patch(`http://localhost:5000/api/referrals/${id}/status`, { status: newStatus });
+      await axios.patch(`/api/referrals/${id}/status`, { status: newStatus });
       fetchReferrals();
     } catch (err) {
       console.error("Update status failed", err);

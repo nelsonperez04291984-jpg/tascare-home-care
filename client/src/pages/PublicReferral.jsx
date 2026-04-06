@@ -38,7 +38,7 @@ const PublicReferral = () => {
 
     try {
       // AI Processing Call
-      const res = await axios.post('http://localhost:5000/api/referrals/parse-ai', uploadData);
+      const res = await axios.post('/api/referrals/parse-ai', uploadData);
       const aiData = res.data;
       
       setFormData(prev => ({
@@ -61,7 +61,7 @@ const PublicReferral = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/referrals/public', {
+      await axios.post('/api/referrals/public', {
         ...formData,
         tenant_id: '00000000-0000-0000-0000-000000000000' 
       });

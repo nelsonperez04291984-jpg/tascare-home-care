@@ -13,8 +13,8 @@ const SchedulingDashboard = () => {
     const fetchData = async () => {
       try {
         const [wRes, vRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/care-scheduling/workers?tenant_id=00000000-0000-0000-0000-000000000000'),
-          axios.get('http://localhost:5000/api/care-scheduling/visits?tenant_id=00000000-0000-0000-0000-000000000000&start_date=2024-04-01&end_date=2024-04-30')
+          axios.get('/api/care-scheduling/workers?tenant_id=00000000-0000-0000-0000-000000000000'),
+          axios.get('/api/care-scheduling/visits?tenant_id=00000000-0000-0000-0000-000000000000&start_date=2024-04-01&end_date=2024-04-30')
         ]);
         setWorkers(wRes.data);
         setVisits(vRes.data);

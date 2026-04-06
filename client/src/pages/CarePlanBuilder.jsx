@@ -64,7 +64,7 @@ const CarePlanBuilder = () => {
 
   const handleSave = async () => {
     try {
-      await axios.post('http://localhost:5000/api/care-scheduling', {
+      await axios.post('/api/care-scheduling', {
         client_id: clientId || '00000000-0000-0000-0000-000000000000',
         tenant_id: '00000000-0000-0000-0000-000000000000',
         goals,
