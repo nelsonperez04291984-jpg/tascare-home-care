@@ -518,6 +518,7 @@ const TenantSettings = () => {
                 </motion.div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {workers.map(w => (
                     <div key={w.id} className="bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden p-6">
                       <div className={`absolute left-0 top-0 h-full w-1.5 ${w.is_compliant === false ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
                       
@@ -573,6 +574,7 @@ const TenantSettings = () => {
                         </button>
                       </div>
                     </div>
+                  ))}
                 </div>
               )}
             </div>
