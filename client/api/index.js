@@ -1,28 +1,26 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pg from 'pg';
+import pool from './db.js';
 
 dotenv.config();
 
 const app = express();
-const { Pool } = pg;
-
-// Database Pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
 
 app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'TasCare API', env: process.env.NODE_ENV });
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', env: process.env.NODE_ENV });
+  } catch (e) {
+    res.status(500).json({ status: 'error', db: 'disconnected', detail: e.message });
+  }
 });
 
-// One-time migration endpoint — visit /api/migrate to create all tables
+// One-time DB setup — visit /api/migrate in browser to create all tables
 app.get('/api/migrate', async (req, res) => {
   try {
     await pool.query(`
@@ -32,7 +30,6 @@ app.get('/api/migrate', async (req, res) => {
         state VARCHAR(50) DEFAULT 'Tasmania',
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-
       CREATE TABLE IF NOT EXISTS referrals (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id UUID,
@@ -48,7 +45,6 @@ app.get('/api/migrate', async (req, res) => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
-
       CREATE TABLE IF NOT EXISTS support_workers (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id UUID,
@@ -58,7 +54,6 @@ app.get('/api/migrate', async (req, res) => {
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-
       CREATE TABLE IF NOT EXISTS care_plans (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id UUID,
@@ -71,7 +66,6 @@ app.get('/api/migrate', async (req, res) => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
-
       CREATE TABLE IF NOT EXISTS schedules (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id UUID,
@@ -84,11 +78,9 @@ app.get('/api/migrate', async (req, res) => {
         notes TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-
       INSERT INTO tenants (id, name, state)
       VALUES ('00000000-0000-0000-0000-000000000000', 'TasCare South (Demo)', 'Tasmania')
       ON CONFLICT (id) DO NOTHING;
-
       INSERT INTO support_workers (tenant_id, name, qualifications, service_areas)
       VALUES 
         ('00000000-0000-0000-0000-000000000000', 'Sarah O''Brien', 'Certificate III in Individual Support', ARRAY['Hobart','Kingston']),
@@ -96,21 +88,18 @@ app.get('/api/migrate', async (req, res) => {
         ('00000000-0000-0000-0000-000000000000', 'Aroha Williams', 'Enrolled Nurse', ARRAY['Clarence','Hobart'])
       ON CONFLICT DO NOTHING;
     `);
-    res.json({ success: true, message: '✅ All tables created and seeded successfully!' });
+    res.json({ success: true, message: '✅ All tables created and seeded!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Import Routes
+// Routes
 import referralRoutes from './routes/referralRoutes.js';
 import careSchedulingRoutes from './routes/careSchedulingRoutes.js';
-
-// Pass pool to routes
-app.use((req, res, next) => { req.db = pool; next(); });
 
 app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 
-// Export for Vercel Serverless
+// Export for Vercel Serverless — no app.listen()
 export default app;

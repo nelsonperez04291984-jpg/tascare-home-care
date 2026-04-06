@@ -1,73 +1,44 @@
-import { db } from '../index.js';
+import pool from '../db.js';
 
-/**
- * Schedule Controller for Support Worker Visits
- */
-export const createVisit = async (req, res) => {
+export const getSupportWorkers = async (req, res) => {
   try {
-    const { tenant_id, client_id, worker_id, care_plan_id, service_type, start_time, end_time, notes } = req.body;
-    
-    // Check for worker conflicts
-    const conflict = await db('schedules')
-      .where({ worker_id, status: 'planned' })
-      .where('start_time', '<', end_time)
-      .where('end_time', '>', start_time)
-      .first();
-
-    if (conflict) {
-      return res.status(409).json({ error: 'Support worker is already booked for this time period' });
-    }
-
-    const [visit] = await db('schedules').insert({
-      tenant_id,
-      client_id,
-      worker_id,
-      care_plan_id,
-      service_type,
-      start_time,
-      end_time,
-      notes,
-      status: 'planned'
-    }).returning('*');
-
-    res.status(201).json(visit);
+    const { tenant_id } = req.query;
+    const result = await pool.query(
+      `SELECT * FROM support_workers WHERE tenant_id = $1 AND is_active = true`,
+      [tenant_id]
+    );
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error creating visit:', error);
-    res.status(500).json({ error: 'Failed to schedule visit' });
+    console.error('Error fetching workers:', error);
+    res.status(500).json({ error: 'Failed to fetch workers', detail: error.message });
   }
 };
 
 export const getWeeklySchedule = async (req, res) => {
   try {
     const { tenant_id, start_date, end_date } = req.query;
-    const visits = await db('schedules')
-      .where({ tenant_id })
-      .whereBetween('start_time', [start_date, end_date])
-      .join('clients', 'schedules.client_id', 'clients.id')
-      .join('support_workers', 'schedules.worker_id', 'support_workers.id')
-      .select(
-        'schedules.*',
-        'clients.name as client_name',
-        'support_workers.name as worker_name'
-      )
-      .orderBy('start_time', 'asc');
-    
-    res.json(visits);
+    const result = await pool.query(
+      `SELECT * FROM schedules WHERE tenant_id = $1 AND scheduled_at BETWEEN $2 AND $3 ORDER BY scheduled_at ASC`,
+      [tenant_id, start_date, end_date]
+    );
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching schedule:', error);
-    res.status(500).json({ error: 'Failed to fetch weekly schedule' });
+    res.status(500).json({ error: 'Failed to fetch weekly schedule', detail: error.message });
   }
 };
 
-export const getSupportWorkers = async (req, res) => {
+export const createVisit = async (req, res) => {
   try {
-    const { tenant_id } = req.query;
-    const workers = await db('support_workers')
-      .where({ tenant_id, is_active: true });
-    
-    res.json(workers);
+    const { tenant_id, client_id, worker_id, service_type, scheduled_at, duration_hours, notes } = req.body;
+    const result = await pool.query(
+      `INSERT INTO schedules (tenant_id, client_id, worker_id, service_type, scheduled_at, duration_hours, notes, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled') RETURNING *`,
+      [tenant_id, client_id, worker_id, service_type, scheduled_at, duration_hours, notes]
+    );
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error fetching workers:', error);
-    res.status(500).json({ error: 'Failed to fetch workers' });
+    console.error('Error creating visit:', error);
+    res.status(500).json({ error: 'Failed to schedule visit', detail: error.message });
   }
 };
