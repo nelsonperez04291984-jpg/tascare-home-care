@@ -147,14 +147,17 @@ export const updateTenant = async (req, res) => {
 
 export const repairDatabase = async (req, res) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    if (!tenant_id) throw new Error('Cannot repair: Your account is missing a Tenant ID. Please Log out and Log in again.');
+    const tenant_id = req.user?.tenant_id;
+    if (!tenant_id) {
+      return res.status(403).json({ error: 'Repair Forbidden', detail: 'Your session is missing an Organization ID. Please Log Out and Log In again to refresh your access.' });
+    }
 
     // 1. Repair rows (Both status and ghosted tenant_ids)
+    // Use a string check to avoid parameter issues if tenant_id is somehow weird
     const repairResult = await pool.query(
       `UPDATE support_workers 
        SET is_active = true, 
-           tenant_id = COALESCE(tenant_id, $1) 
+           tenant_id = COALESCE(tenant_id, $1::uuid) 
        WHERE is_active IS NULL OR tenant_id IS NULL`, 
       [tenant_id]
     );
