@@ -113,6 +113,21 @@ app.get('/api/migrate', async (req, res) => {
         size_bytes INTEGER,
         uploaded_at TIMESTAMPTZ DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS worker_availability (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+        day_of_week INTEGER,
+        start_time TIME,
+        end_time TIME,
+        UNIQUE (worker_id, day_of_week)
+      );
+      CREATE TABLE IF NOT EXISTS worker_time_off (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        worker_id UUID REFERENCES support_workers(id) ON DELETE CASCADE,
+        start_datetime TIMESTAMPTZ,
+        end_datetime TIMESTAMPTZ,
+        reason VARCHAR(255)
+      );
       ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100) UNIQUE;
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
       ALTER TABLE referrals ADD COLUMN IF NOT EXISTS address TEXT;
@@ -138,8 +153,15 @@ app.get('/api/migrate', async (req, res) => {
         ('00000000-0000-0000-0000-000000000000', 'Mary Brown', '1938-11-12', 'CHSP', NULL, NULL, 'Family Enquiry', 'Kingston', 'Daughter enquiring about social support and transport for shopping.', 'contacted'),
         ('00000000-0000-0000-0000-000000000000', 'Robert Lee', '1940-03-08', 'HCP', 2, '1-994421', 'GP Referral', 'Glenorchy', 'Mild dementia. Requires medication reminders and companionship twice weekly.', 'assessment_scheduled')
       ON CONFLICT DO NOTHING;
+      
+      -- Seed availability for Monday to Friday (1 to 5) 09:00 to 17:00 for everyone
+      INSERT INTO worker_availability (worker_id, day_of_week, start_time, end_time)
+      SELECT id, d.day_of_week, '09:00:00', '17:00:00'
+      FROM support_workers
+      CROSS JOIN generate_series(1, 5) AS d(day_of_week)
+      ON CONFLICT (worker_id, day_of_week) DO NOTHING;
     `);
-    res.json({ success: true, message: '✅ All tables created and seeded with demo data!' });
+    res.json({ success: true, message: '✅ All tables created and seeded with availability engine data!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

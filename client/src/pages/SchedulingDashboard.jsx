@@ -68,18 +68,41 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
   });
   const [saving, setSaving]   = useState(false);
   const [error,  setError]    = useState(null);
+  const [availableWorkers, setAvailableWorkers] = useState([]);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Simulate rich logistical data for the workers
+  // Simulate rich logistical data for the distance only, now map availability from the real backend
   const getWorkerLogistics = (workerId, idx) => {
     const distances = ['1.2km', '3.4km', '8.5km', '4.1km', '2.0km'];
-    const availabilities = ['07:00 – 15:00', '09:00 – 17:00', '12:00 – 20:00', '06:00 – 12:00'];
     return {
       distance: distances[idx % distances.length],
-      availability: availabilities[idx % availabilities.length]
     };
   };
+
+  useEffect(() => {
+    const checkAvailability = async () => {
+      setCheckingAvailability(true);
+      try {
+        const res = await axios.get(`/api/care-scheduling/workers?tenant_id=${TENANT_ID}&target_date=${form.scheduled_date}&target_time=${form.scheduled_time}&duration_hours=${form.duration_hours}`);
+        setAvailableWorkers(res.data);
+        
+        // If the currently selected worker becomes unavailable, auto-deselect them to prevent errors
+        if (form.worker_id) {
+          const selected = res.data.find(w => w.id === form.worker_id);
+          if (selected && !selected.is_available) {
+            set('worker_id', '');
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch availability", err);
+      } finally {
+        setCheckingAvailability(false);
+      }
+    };
+    checkAvailability();
+  }, [form.scheduled_date, form.scheduled_time, form.duration_hours]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -266,23 +289,33 @@ const CreateVisitModal = ({ workers, initialWorker, initialDate, onClose, onCrea
               </label>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar p-1">
-                {workers.map((w, idx) => {
+                {checkingAvailability ? (
+                  <div className="col-span-full py-8 flex flex-col items-center justify-center text-slate-400">
+                    <Loader2 size={24} className="animate-spin mb-2" />
+                    <span className="text-xs font-semibold">Running availability engine…</span>
+                  </div>
+                ) : availableWorkers.map((w, idx) => {
                   const logistics = getWorkerLogistics(w.id, idx);
                   const isSelected = form.worker_id === w.id;
+                  const isAvailable = w.is_available;
+                  
                   return (
                     <div 
                       key={w.id} 
-                      onClick={() => set('worker_id', w.id)}
-                      className={`cursor-pointer transition-all border-2 rounded-2xl p-4 ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100' : 'border-slate-100 hover:border-clinical-200 hover:bg-slate-50'}`}
+                      onClick={() => isAvailable && set('worker_id', w.id)}
+                      className={`transition-all border-2 rounded-2xl p-4 
+                        ${!isAvailable ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-200 grayscale' : 'cursor-pointer hover:border-clinical-200 hover:bg-slate-50 border-slate-100'} 
+                        ${isSelected ? 'border-clinical-500 bg-clinical-50 shadow-md ring-2 ring-clinical-100 opacity-100 grayscale-0' : ''}`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-bold text-slate-800">{w.name}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
-                            <Clock size={12} className="text-emerald-500"/> Avail: {logistics.availability}
+                          <p className={`font-bold ${!isAvailable ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{w.name}</p>
+                          <div className={`flex items-center gap-1.5 text-xs mt-1 font-medium ${isAvailable ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            {isAvailable ? <CheckCircle2 size={12}/> : <AlertCircle size={12}/>} 
+                            {w.availability_reason || 'Unknown'}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 font-medium">
-                            <MapPin size={12} className={idx === 0 ? "text-rose-500" : "text-blue-500"}/> {logistics.distance} from Client
+                            <MapPin size={12} className={idx === 0 && isAvailable ? "text-rose-500" : "text-blue-500"}/> {logistics.distance} from Client
                           </div>
                         </div>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected ? 'bg-clinical-500 border-clinical-500 text-white' : 'border-slate-200 bg-white'}`}>
