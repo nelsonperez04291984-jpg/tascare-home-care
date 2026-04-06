@@ -113,12 +113,11 @@ const TenantSettings = () => {
     setSaving(true);
     try {
       await axios.patch('/api/admin/tenant', tenant);
-      alert('Organization settings updated successfully!');
-      // Force reload to update sidebar branding if necessary, 
-      // or just trust the local state for this view
+      alert('✅ Organization settings updated successfully!');
     } catch (e) {
-      console.error(e);
-      alert('Failed to update organization settings.');
+      console.error('Update Tenant Error:', e);
+      const msg = e.response?.data?.detail || e.response?.data?.error || e.message;
+      alert(`❌ Update Failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -129,10 +128,15 @@ const TenantSettings = () => {
     setSaving(true);
     try {
       await axios.post('/api/admin/users', { ...userForm });
+      alert(`✅ System user "${userForm.name}" created successfully!`);
       setIsAddingUser(false);
       setUserForm({ name: '', email: '', password: '', role: 'coordinator' });
       fetchData();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error('Add User Error:', e);
+      const msg = e.response?.data?.detail || e.response?.data?.error || e.message;
+      alert(`❌ User Creation Failed: ${msg}`);
+    }
     setSaving(false);
   };
 

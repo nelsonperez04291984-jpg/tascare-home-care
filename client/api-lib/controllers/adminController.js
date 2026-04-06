@@ -7,7 +7,8 @@ export const getUsers = async (req, res) => {
     const result = await pool.query(`SELECT id, email, name, role, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at DESC`, [tenant_id]);
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch users', detail: error.message });
+    console.error('Failed to fetch users:', error);
+    res.status(500).json({ error: 'Failed to fetch users', detail: error.message, code: error.code });
   }
 };
 
@@ -22,7 +23,8 @@ export const createUser = async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create user', detail: error.message });
+    console.error('Failed to create user:', error);
+    res.status(500).json({ error: 'Failed to create user', detail: error.message, code: error.code });
   }
 };
 
@@ -118,7 +120,8 @@ export const getTenant = async (req, res) => {
     const result = await pool.query(`SELECT * FROM tenants WHERE id = $1`, [tenant_id]);
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch tenant', detail: error.message });
+    console.error('Failed to fetch tenant:', error);
+    res.status(500).json({ error: 'Failed to fetch tenant settings', detail: error.message, code: error.code });
   }
 };
 
@@ -132,6 +135,7 @@ export const updateTenant = async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update tenant', detail: error.message });
+    console.error('Failed to update tenant:', error);
+    res.status(500).json({ error: 'Failed to update organization settings', detail: error.message, code: error.code });
   }
 };

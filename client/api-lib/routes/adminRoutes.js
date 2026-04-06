@@ -10,7 +10,7 @@ const router = express.Router();
 
 // Tenant & Organization
 router.get('/tenant', getTenant);
-router.patch('/tenant/:id', updateTenant);
+router.patch('/tenant', updateTenant);
 
 // User management
 router.get('/users', getUsers);
