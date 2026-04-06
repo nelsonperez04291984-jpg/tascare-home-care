@@ -51,7 +51,12 @@ const Navigation = ({ currentUser, onLogout, tenant }) => (
       <NavLink to="/analytics" icon={TrendingUp} label="Analytics" />
       <NavLink to="/clients" icon={Users} label="Clients" />
       <NavLink to="/public-referral" icon={FilePlus} label="New Referral" />
-      {currentUser?.role === 'admin' && <NavLink to="/settings" icon={Settings} label="Admin Settings" />}
+      {currentUser?.role === 'admin' && (
+        <>
+          <NavLink to="/staff" icon={Shield} label="Staff & Compliance" />
+          <NavLink to="/settings" icon={Settings} label="Admin Settings" />
+        </>
+      )}
     </div>
 
     <div className="mt-auto">
