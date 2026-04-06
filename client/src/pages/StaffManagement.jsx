@@ -96,7 +96,7 @@ const StaffManagement = () => {
           onClick={() => setActiveTab('users')}
           className={`pb-4 px-2 font-medium capitalize transition-all ${activeTab === 'users' ? 'text-clinical-600 border-b-2 border-clinical-600' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          <ShieldCore className="inline mr-2" size={18} /> System Users
+          <Shield className="inline mr-2" size={18} /> System Users
         </button>
         <button 
           onClick={() => setActiveTab('workers')}
