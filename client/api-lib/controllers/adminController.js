@@ -57,3 +57,27 @@ export const deleteWorker = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete worker', detail: error.message });
   }
 };
+
+export const getTenant = async (req, res) => {
+  try {
+    const { id } = req.query; // Tenant ID
+    const result = await pool.query(`SELECT * FROM tenants WHERE id = $1`, [id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch tenant', detail: error.message });
+  }
+};
+
+export const updateTenant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, subdomain, state } = req.body;
+    const result = await pool.query(
+      `UPDATE tenants SET name = $1, subdomain = $2, state = $3 WHERE id = $4 RETURNING *`,
+      [name, subdomain, state, id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update tenant', detail: error.message });
+  }
+};

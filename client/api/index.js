@@ -7,6 +7,7 @@ import careSchedulingRoutes from '../api-lib/routes/careSchedulingRoutes.js';
 import adminRoutes from '../api-lib/routes/adminRoutes.js';
 import authRoutes from '../api-lib/routes/authRoutes.js';
 import billingRoutes from '../api-lib/routes/billingRoutes.js';
+import analyticsRoutes from '../api-lib/routes/analyticsRoutes.js';
 
 dotenv.config();
 
@@ -126,6 +127,7 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/care-scheduling', careSchedulingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Export for Vercel Serverless — no app.listen()
 export default app;
