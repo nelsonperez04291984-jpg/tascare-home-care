@@ -7,8 +7,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000000';
-
 const PriorityAlert = ({ icon: Icon, title, count, colorClass, link }) => (
   <Link to={link || "/referrals"} className={`block bg-white border ${colorClass} rounded-2xl p-5 hover:shadow-lg transition-all`}>
     <div className="flex justify-between items-start">
@@ -45,19 +43,19 @@ const QuickAction = ({ to, icon: Icon, title, desc, color, delay }) => (
   </motion.div>
 );
 
-const HomeDashboard = () => {
+const HomeDashboard = ({ tenant }) => {
   const [referrals, setReferrals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`/api/referrals?tenant_id=${TENANT_ID}`)
+    axios.get('/api/referrals')
       .then(res => setReferrals(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   // Compute Priority Stats
-  const urgentDischarges = referrals.filter(r => (r.clinical_details || '').toLowerCase().includes('hospital')).length || 2; // Simulated baseline if none
+  const urgentDischarges = referrals.filter(r => (r.clinical_details || '').toLowerCase().includes('hospital')).length;
   const awaitingTriage = referrals.filter(r => r.status === 'new').length;
   const awaitingContact = referrals.filter(r => r.status === 'contacted').length;
   const assessmentsToday = referrals.filter(r => r.status === 'assessment_scheduled').length;
@@ -72,7 +70,7 @@ const HomeDashboard = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <p className="text-sm font-medium text-slate-400 mb-1">{today}</p>
         <h2 className="text-4xl font-bold text-slate-800">Intake Command Center</h2>
-        <p className="text-slate-500 mt-1">Tasmania (South) Region</p>
+        <p className="text-slate-500 mt-1">{tenant?.name || 'Tasmania (South)'} Region</p>
       </motion.div>
 
       {/* TODAY'S PRIORITIES PANEL */}

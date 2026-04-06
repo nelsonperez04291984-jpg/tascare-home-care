@@ -127,7 +127,7 @@ function App() {
             <Navigation currentUser={currentUser} onLogout={handleLogout} tenant={tenant} />
             <main className="flex-1 md:ml-64 p-8">
               <Routes>
-                <Route path="/" element={<HomeDashboard />} />
+                <Route path="/" element={<HomeDashboard tenant={tenant} />} />
                 <Route path="/referrals" element={<Dashboard />} />
                 <Route path="/care-plan/:clientId" element={<CarePlanBuilder />} />
                 <Route path="/scheduling" element={<SchedulingDashboard />} />
