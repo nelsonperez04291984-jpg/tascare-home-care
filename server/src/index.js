@@ -10,7 +10,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Initialize Database
-const db = knex(knexConfig.development);
+const env = process.env.NODE_ENV || 'development';
+const db = knex(knexConfig[env]);
 
 app.use(cors());
 app.use(express.json());
